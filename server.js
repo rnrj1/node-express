@@ -127,7 +127,7 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
-// ② 전체 데이터 동기화/저장 API (수정된 안전한 버전)
+// 전체 데이터 동기화/저장 API (상품 및 이미지 저장 오류 방지 버전)
 app.post("/api/data", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -145,18 +145,19 @@ app.post("/api/data", async (req, res) => {
       }
     }
 
-    // products 갱신
+    // products 갱신 (이미지 문자열 및 데이터 타입 오류 방지)
     await client.query("DELETE FROM products");
     if (products && Array.isArray(products)) {
       for (const p of products) {
+        const imageUrl = typeof p.image === 'string' ? p.image : '';
         await client.query(
           "INSERT INTO products (id, name, category, price, stock, image, active) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-          [p.id, p.name, p.category, p.price || 0, p.stock || 0, p.image || '', p.active !== false]
+          [p.id, p.name, p.category || '기타', p.price || 0, p.stock || 0, imageUrl, p.active !== false]
         );
       }
     }
 
-    // requests 갱신 (studentId와 student_id 양쪽 모두 대응)
+    // requests 갱신
     await client.query("DELETE FROM requests");
     if (requests && Array.isArray(requests)) {
       for (const r of requests) {
