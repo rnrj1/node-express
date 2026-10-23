@@ -160,7 +160,28 @@ function requestTopup(){
 function renderAdmin(){
  if(!admin)return;
  $('studentAdminList').innerHTML=sortedStudents(data.students).map(s=>`<div class="listitem"><div class="row mobile-col"><div><b>${s.grade?`${s.grade}학년 · `:'학년 미설정 · '}${esc(s.name)}</b><div class="muted small">잔액 ${money(s.balance)} · ${s.active?'사용 중':'비활성화'}</div></div><div class="row"><button class="secondary" onclick="editStudent('${s.id}')">수정</button><button class="${s.active?'danger':'secondary'}" onclick="toggleStudent('${s.id}')">${s.active?'비활성화':'활성화'}</button><button class="danger" onclick="deleteStudent('${s.id}')">학생 삭제</button></div></div></div>`).join('')||'<div class="empty">학생이 없습니다.</div>';
- $('inventoryList').innerHTML=[...data.products].sort((a,b)=>categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category)||Number(b.price)-Number(a.price)||a.name.localeCompare(b.name,'ko')).map(p=>`<div class="listitem"><div class="row mobile-col"><div class="product-info">${p.image?`<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}<div><b>${esc(p.name)}</b> <span class="pill">${esc(p.category)}</span><div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active?'판매 중':'판매 중단'}</div></div></div><div class="row"><button class="secondary" onclick="editProduct('${p.id}')">수정</button><button class="secondary" onclick="restock('${p.id}')">재고 추가</button><button class="ghost" onclick="toggleProduct('${p.id}')">${p.active?'판매 중단':'판매 재개'}</button><button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button></div></div></div>`).join('')||'<div class="empty">상품이 없습니다.</div>';
+ $('inventoryList').innerHTML = [...data.products].sort((a, b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category) || Number(b.price) - Number(a.price) || a.name.localeCompare(b.name, 'ko')).map(p => {
+  const isSoldOut = Number(p.stock) < 1;
+  return `<div class="listitem" style="${isSoldOut ? 'background:#fff5f5; border-left:4px solid var(--red); padding-left:10px; border-radius:8px;' : ''}">
+    <div class="row mobile-col">
+      <div class="product-info">
+        ${p.image ? `<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">` : '<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}
+        <div>
+          <b>${esc(p.name)}</b> 
+          <span class="pill">${esc(p.category)}</span>
+          ${isSoldOut ? '<span class="pill no" style="margin-left:6px;">! 품절</span>' : ''}
+          <div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active ? '판매 중' : '판매 중단'}</div>
+        </div>
+      </div>
+      <div class="row">
+        <button class="secondary" onclick="editProduct('${p.id}')">수정</button>
+        <button class="secondary" onclick="restock('${p.id}')">재고 추가</button>
+        <button class="ghost" onclick="toggleProduct('${p.id}')">${p.active ? '판매 중단' : '판매 재개'}</button>
+        <button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button>
+      </div>
+    </div>
+  </div>`;
+}).join('') || '<div class="empty">상품이 없습니다.</div>';
  
  $('topupAdminList').innerHTML=data.requests.map(r=>{
    const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 학생';
