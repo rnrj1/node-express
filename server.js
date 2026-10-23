@@ -9,8 +9,8 @@ const PORT = process.env.PORT || 3000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-app.use(express.json());
-app.use(express.static(__dirname));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const pool = new Pool({
   host: process.env.DB_HOST,
