@@ -44,7 +44,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
   <div id="adminLogin" class="card stack" style="max-width:480px;margin:auto"><h2 style="margin:0">관리자 로그인</h2><div class="muted small">비밀번호 분실 시 <b>12학년 이민찬</b>에게 문의해주세요.</div><div class="field"><label for="adminPassword">관리자 비밀번호</label><input id="adminPassword" type="password" placeholder="비밀번호 입력"></div><button id="adminLoginBtn">로그인</button><div id="loginError" class="muted small"></div></div>
   <div id="adminPanel" class="hidden">
     <div class="row mobile-col"><div><h2 style="margin:0">관리자 대시보드</h2><div class="muted small">학생 · 상품 · 충전 · 장부를 관리합니다.</div></div><button class="ghost" id="logoutBtn">로그아웃</button></div>
-    <div class="tabs" id="adminTabs"><button class="active" data-admin="students">학생 관리</button><button data-admin="inventory">상품·재고</button><button data-admin="topups">충전 승인</button><button data-admin="ledger">장부</button><button data-admin="settings">기금 설정</button></div>
+    <div class="tabs" id="adminTabs"><button class="active" data-admin="students">학생 관리</button><button data-admin="inventory">상품·재고</button><button data-admin="topups">충전 승인 <span id="topupBadge" class="pill wait" style="display:none; margin-left:4px; padding:2px 6px;">0</span></button><button data-admin="ledger">장부</button><button data-admin="settings">기금 설정</button></div>
     <div id="adminStudents" class="adminSub">
       <div class="card stack" style="margin-bottom:14px"><h3>학생 프로필 추가</h3><div class="formgrid"><div class="field"><label>학년</label><select id="newStudentGrade"><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option><option value="7">7학년</option><option value="8">8학년</option><option value="9">9학년</option><option value="10">10학년</option><option value="11">11학년</option><option value="12">12학년</option></select></div><div class="field"><label>학생 이름</label><input id="newStudentName" placeholder="예: 김민수"></div><div class="field"><label>식별 코드 (선택)</label><input id="newStudentCode" placeholder="필요 없으면 비워 두세요"></div></div><button id="addStudent">학생 추가</button></div><div class="card"><h3>등록된 학생</h3><div id="studentAdminList"></div></div>
     </div>
@@ -133,6 +133,13 @@ function renderAdmin(){
  const sales=data.ledger.filter(l=>l.type==='판매');$('ledgerIncomeTotal').textContent=money(sales.reduce((sum,l)=>sum+Number(l.amount||0),0));const todayPrefix=new Date().toLocaleDateString('ko-KR');const daily=sales.filter(l=>l.timestamp?new Date(l.timestamp).toDateString()===new Date().toDateString():String(l.time||'').startsWith(todayPrefix)).reduce((sum,l)=>sum+Number(l.amount||0),0);$('ledgerDailyIncome').textContent='오늘 '+money(daily);$('ledgerCount').textContent=data.ledger.length+'건';
  $('ledgerList').innerHTML=data.ledger.map(l=>`<div class="listitem"><div class="row mobile-col"><div><b>${esc(l.type)} · ${esc(l.detail)}</b><b>${money(l.amount)}</b><div class="muted small">${esc(l.student||'')} · ${esc(l.time)}</div></div><button class="danger" onclick="deleteLedger('${l.id}')">이 기록 삭제</button></div></div>`).join('')||'<div class="empty">기록이 없습니다.</div>';
  $('goalInput').value=data.goal;$('fundInput').value=data.fund;
+ // 승인 대기 중인 신청 건수 계산
+const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
+const badge = $('topupBadge');
+if (badge) {
+  badge.textContent = pendingCount;
+  badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+}
 }
 
 function editStudent(id) {
