@@ -56,20 +56,58 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
     <div id="adminSettings" class="adminSub hidden"><div class="card stack"><h3>학교 기금 설정</h3><div class="field"><label>모금 목표 (포인트)</label><input id="goalInput" type="number" min="1"></div><div class="field"><label>현재 기금 (포인트)</label><input id="fundInput" type="number" min="0"></div><button id="saveFund">기금 설정 저장</button><div class="muted small">실제 현금과 기금 잔액은 담당자가 별도로 대조해야 합니다.</div></div></div>
   </div>
 </section>
-</main><footer>학교 매점 데모 · 실제 운영 전에는 보안 인증과 온라인 데이터베이스 연결이 필요합니다.</footer>
+</main><footer>학교 매점 데모 · 온라인 DB 연동 완료</footer>
 <script>
-const KEY='school-store-demo-v1';
-const initial={students:[{id:'s1',name:'학생 A',grade:1,code:'',balance:3000,active:true},{id:'s2',name:'학생 B',grade:2,code:'',balance:1500,active:true},{id:'s3',name:'학생 C',grade:3,code:'',balance:0,active:true}],products:[{id:'p1',name:'초코 과자',category:'과자',price:1000,stock:8,active:true},{id:'p2',name:'주스',category:'음료',price:1500,stock:5,active:true},{id:'p3',name:'연필',category:'기타',price:500,stock:12,active:true}],requests:[],ledger:[],goal:100000,fund:0};
-let data;try{data=JSON.parse(localStorage.getItem(KEY))||structuredClone(initial)}catch(e){data=JSON.parse(JSON.stringify(initial))}
-let currentStudent='',admin=false;
+let data = {students:[], products:[], requests:[], ledger:[], goal:100000, fund:0};
+let currentStudent='', admin=false;
 const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
-// Upgrade older local data without discarding existing balances or records.
-if(data.products){data.products.forEach(p=>{if(p.category==='간식')p.category='과자';else if(p.category==='문구류')p.category='기타';if(!categoryOrder.includes(p.category))p.category='기타';if(typeof p.image!=='string')p.image='';});} 
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+
+// 서버에서 데이터 불러오기
+async function loadData() {
+  try {
+    const res = await fetch('/api/data');
+    if (res.ok) {
+      data = await res.json();
+      if(!data.students) data.students = [];
+      if(!data.products) data.products = [];
+      if(!data.requests) data.requests = [];
+      if(!data.ledger) data.ledger = [];
+      if(!data.goal) data.goal = 100000;
+      if(!data.fund) data.fund = 0;
+      
+      data.products.forEach(p=>{if(p.category==='간식')p.category='과자';else if(p.category==='문구류')p.category='기타';if(!categoryOrder.includes(p.category))p.category='기타';if(typeof p.image!=='string')p.image='';});
+      render();
+    } else {
+      alert('데이터를 불러오지 못했습니다.');
+    }
+  } catch (e) {
+    console.error('Failed to load data:', e);
+  }
+}
+
+// 서버에 데이터 저장하기
+async function save() {
+  try {
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      alert('서버 저장 중 오류가 발생했습니다.');
+    }
+  } catch (e) {
+    console.error('Failed to save data:', e);
+    alert('서버와 통신할 수 없습니다.');
+  }
+  render();
+}
+
 function schoolBand(grade){grade=Number(grade);if(grade>=1&&grade<=5)return '초등';if(grade>=6&&grade<=8)return '중';if(grade>=9&&grade<=12)return '고등';return '미설정'}
 function sortedStudents(list){return [...list].sort((a,b)=>{const ga=Number(a.grade)||99,gb=Number(b.grade)||99;return ga-gb||a.name.localeCompare(b.name,'ko')})}
-function addLedger(type,detail,amount,student='',studentId=''){const matched=data.students.find(s=>s.id===studentId)||data.students.find(s=>s.name===student);data.ledger.unshift({id:Date.now()+Math.random(),type,detail,amount,student,studentId:matched?.id||'',grade:matched?.grade||null,time:new Date().toLocaleString('ko-KR'),timestamp:Date.now()})}
+function addLedger(type,detail,amount,student='',studentId=''){const matched=data.students.find(s=>s.id===studentId)||data.students.find(s=>s.name===student);data.ledger.unshift({id:'l'+Date.now()+Math.random(),type,detail,amount,student,studentId:matched?.id||'',grade:matched?.grade||null,time:new Date().toLocaleString('ko-KR'),timestamp:Date.now()})}
+
 function render(){
  const activeStudents=sortedStudents(data.students.filter(s=>s.active));let studentOptions='<option value="">학생을 선택하세요</option>';let lastGradeGroup='';activeStudents.forEach(s=>{const group=s.grade?`${s.grade}학년`:'학년 미설정';if(group!==lastGradeGroup){if(lastGradeGroup)studentOptions+='</optgroup>';studentOptions+=`<optgroup label="${group}">`;lastGradeGroup=group}studentOptions+=`<option value="${s.id}">${esc(s.name)}</option>`});if(lastGradeGroup)studentOptions+='</optgroup>';$('studentSelect').innerHTML=studentOptions;
  $('studentSelect').value=currentStudent;
@@ -80,11 +118,13 @@ function render(){
  $('products').innerHTML=visibleProducts.map(p=>`<div class="card stack">${p.image?`<img class="product-image-large" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-image-large" style="display:grid;place-items:center;font-size:36px">🛍️</div>'}<div class="row"><span class="pill">${esc(p.category)}</span><span class="muted small">재고 ${p.stock}개</span></div><div><h3>${esc(p.name)}</h3><div class="price">${money(p.price)}</div></div><button ${!st||p.stock<1||st.balance<p.price?'disabled':''} onclick="buy('${p.id}')">${p.stock<1?'품절':!st?'학생 선택':st.balance<p.price?'포인트 부족':'구매하기'}</button></div>`).join('')||'<div class="empty">등록된 상품이 없습니다.</div>';
  const reqs=data.requests.filter(r=>r.studentId===currentStudent);
  $('myRequests').innerHTML=st?(reqs.length?reqs.map(r=>`<div class="listitem"><div class="row"><b>${won(r.amount)}</b><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div><div class="muted small">${r.time}</div></div>`).join(''):'아직 충전 신청이 없습니다.'):'학생을 선택하면 내역이 표시됩니다.';
- $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name===l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
+ $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
  renderAdmin();
 }
+
 function buy(id){const st=data.students.find(s=>s.id===currentStudent),p=data.products.find(p=>p.id===id);if(!st||!p||!p.active||p.stock<1||st.balance<p.price)return;if(!confirm(`${p.name}을(를) ${money(p.price)}에 구매할까요?`))return;st.balance-=p.price;p.stock--;addLedger('판매',p.name+' 구매',p.price,st.name,st.id);data.fund+=p.price;save();alert('구매 완료! 남은 포인트: '+money(st.balance))}
 function requestTopup(){const st=data.students.find(s=>s.id===currentStudent);if(!st){alert('먼저 학생 이름을 선택해 주세요.');return}const amount=Number($('topupAmount').value);if(!Number.isSafeInteger(amount)||amount<1){alert('충전 금액은 1,000원 이상의 정수로 입력해 주세요.');return}if(!confirm(`${st.name} 이름으로 ${won(amount)} 충전을 신청할까요? 실제 현금을 관리자에게 전달한 뒤 승인받아 주세요.`))return;data.requests.unshift({id:'r'+Date.now(),studentId:st.id,studentName:st.name,amount,status:'승인 대기',time:new Date().toLocaleString('ko-KR')});$('topupFeedback').innerHTML='<div class="success">신청이 등록됐어요. 관리자 확인 후 포인트가 지급됩니다.</div>';save()}
+
 function renderAdmin(){
  if(!admin)return;
  $('studentAdminList').innerHTML=sortedStudents(data.students).map(s=>`<div class="listitem"><div class="row mobile-col"><div><b>${s.grade?`${s.grade}학년 · `:'학년 미설정 · '}${esc(s.name)}</b><div class="muted small">잔액 ${money(s.balance)} · ${s.active?'사용 중':'비활성화'}</div></div><div class="row"><button class="secondary" onclick="editStudent('${s.id}')">수정</button><button class="${s.active?'danger':'secondary'}" onclick="toggleStudent('${s.id}')">${s.active?'비활성화':'활성화'}</button><button class="danger" onclick="deleteStudent('${s.id}')">학생 삭제</button></div></div></div>`).join('')||'<div class="empty">학생이 없습니다.</div>';
@@ -94,71 +134,25 @@ function renderAdmin(){
  $('ledgerList').innerHTML=data.ledger.map(l=>`<div class="listitem"><div class="row mobile-col"><div><b>${esc(l.type)} · ${esc(l.detail)}</b><b>${money(l.amount)}</b><div class="muted small">${esc(l.student||'')} · ${esc(l.time)}</div></div><button class="danger" onclick="deleteLedger('${l.id}')">이 기록 삭제</button></div></div>`).join('')||'<div class="empty">기록이 없습니다.</div>';
  $('goalInput').value=data.goal;$('fundInput').value=data.fund;
 }
+
 function editStudent(id) {
     const s = data.students.find(x => x.id === id);
     if (!s) return;
-
-    // 학년 수정
-    const gradeText = prompt(
-        '학년을 입력해 주세요 (1~12)',
-        s.grade || ''
-    );
+    const gradeText = prompt('학년을 입력해 주세요 (1~12)', s.grade || '');
     if (gradeText === null) return;
-
     const grade = Number(gradeText);
-    if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
-        alert('학년은 1부터 12 사이의 정수로 입력해 주세요.');
-        return;
-    }
-
-    // 이름 수정
+    if (!Number.isInteger(grade) || grade < 1 || grade > 12) { alert('학년은 1부터 12 사이의 정수로 입력해 주세요.'); return; }
     const name = prompt('학생 이름', s.name);
     if (name === null) return;
-
-    if (!name.trim()) {
-        alert('학생 이름을 입력해 주세요.');
-        return;
-    }
-
-    // 잔액 수정
-    const balanceText = prompt(
-        '학생 잔액을 입력해 주세요 (포인트)',
-        String(s.balance)
-    );
+    if (!name.trim()) { alert('학생 이름을 입력해 주세요.'); return; }
+    const balanceText = prompt('학생 잔액을 입력해 주세요 (포인트)', String(s.balance));
     if (balanceText === null) return;
-
     const balance = Number(balanceText);
-    if (!Number.isSafeInteger(balance) || balance < 0) {
-        alert('잔액은 0 이상의 정수로 입력해 주세요.');
-        return;
-    }
-
-    // 모든 입력이 정상일 때 변경 사항 적용
+    if (!Number.isSafeInteger(balance) || balance < 0) { alert('잔액은 0 이상의 정수로 입력해 주세요.'); return; }
     const oldName = s.name;
-
-    s.grade = grade;
-    s.name = name.trim();
-    s.balance = balance;
-
-    // 기존 장부의 학생 정보 갱신
-    data.ledger.forEach(l => {
-        if (
-            l.studentId === id ||
-            (!l.studentId && l.student === oldName)
-        ) {
-            l.studentId = id;
-            l.grade = grade;
-            l.student = s.name;
-        }
-    });
-
-    // 대기 중인 충전 신청의 이름 갱신
-    data.requests
-        .filter(r => r.studentId === id && r.status === '승인 대기')
-        .forEach(r => {
-            r.studentName = s.name;
-        });
-
+    s.grade = grade; s.name = name.trim(); s.balance = balance;
+    data.ledger.forEach(l => { if (l.studentId === id || (!l.studentId && l.student === oldName)) { l.studentId = id; l.grade = grade; l.student = s.name; } });
+    data.requests.filter(r => r.studentId === id && r.status === '승인 대기').forEach(r => { r.studentName = s.name; });
     save();
 }
 function toggleStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;s.active=!s.active;save()}
@@ -170,8 +164,10 @@ function deleteProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return
 function approve(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(!confirm(`${r.studentName} 학생에게 ${won(r.amount)} 현금을 실제로 받았나요? 확인 후 승인하면 포인트가 지급됩니다.`))return;const s=data.students.find(x=>x.id===r.studentId);if(!s){alert('학생 프로필을 찾을 수 없습니다.');return}s.balance+=r.amount;r.status='승인 완료';r.approvedAt=new Date().toLocaleString('ko-KR');addLedger('충전',`현금 충전 승인`,r.amount,s.name,s.id);save()}
 function reject(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(confirm('이 충전 신청을 거절할까요?')){r.status='거절';save()}}
 function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(id));if(!entry)return;if(!confirm(`장부 기록 ‘${entry.type} · ${entry.detail}’을 삭제할까요?\n학생 포인트, 재고, 기금은 변경되지 않습니다.`))return;data.ledger=data.ledger.filter(l=>String(l.id)!==String(id));save()}
-function showPage(page){document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));['student','fund','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));if(page==='admin'&&!admin)$('adminPassword').focus()}
+
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+function showPage(page){document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));['student','fund','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));if(page==='admin'&&!admin)$('adminPassword').focus()}
+
 $('adminToggle').onclick=()=>showPage('admin');$('adminTab').onclick=()=>showPage('admin');
 $('studentSelect').onchange=e=>{currentStudent=e.target.value;$('topupFeedback').innerHTML='';render()};
 $('productCategoryFilter').onchange=render;$('productSort').onchange=render;
@@ -185,6 +181,8 @@ $('addStudent').onclick=()=>{const grade=Number($('newStudentGrade').value),name
 function readProductImage(file){return new Promise((resolve,reject)=>{if(!file){resolve('');return}if(!file.type.startsWith('image/')){reject(new Error('이미지 파일을 선택해 주세요.'));return}const reader=new FileReader();reader.onerror=()=>reject(new Error('사진을 읽지 못했습니다.'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('사진 파일을 열 수 없습니다.'));img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.72))};img.src=reader.result};reader.readAsDataURL(file)})}
 $('addProduct').onclick=async()=>{const name=$('newProductName').value.trim(),category=$('newProductCategory').value,price=Number($('newProductPrice').value),stock=Number($('newProductStock').value),file=$('newProductImage').files[0];if(!name||!Number.isInteger(price)||price<0||!Number.isInteger(stock)||stock<0){alert('상품명, 가격, 재고를 확인해 주세요.');return}try{const image=await readProductImage(file);data.products.push({id:'p'+Date.now(),name,category,price,stock,image,active:true});$('newProductName').value='';$('newProductImage').value='';save()}catch(err){alert(err.message||'사진을 처리하지 못했습니다.')}};
 $('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($('fundInput').value);if(!Number.isInteger(goal)||goal<1||!Number.isInteger(fund)||fund<0){alert('기금 목표와 금액을 확인해 주세요.');return}data.goal=goal;data.fund=fund;save();alert('기금 설정을 저장했습니다.')};
-render();
+
+// 앱 실행 시 서버에서 데이터를 불러오도록 변경
+loadData();
 </script>
 </body></html>
