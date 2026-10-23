@@ -17,7 +17,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
 </style>
 </head>
 <body>
-<header><div class="top"><div class="brand"><span class="logo">🛍️</span> 우리 학교 매점</div><button class="secondary" id="adminToggle">관리자</button></div></header>
+<header><div class="top"><div class="brand"><span class="logo">🛍️</span> 우리 학교 매점</div><button class="secondary" id="adminToggle">관리자 <span id="totalBadge" class="pill wait" style="display:none; margin-left:4px; padding:2px 6px;">0</span></button>
 <main>
 <section class="hero"><h1>학교 매점에 오신 걸 환영해요!</h1><div class="muted">이름을 선택하고 포인트로 상품을 구매해 보세요.</div></section>
 <div class="tabs"><button class="active" data-page="student">학생 매점</button><button data-page="fund">학교 기금</button><button data-page="admin" id="adminTab" class="hidden">관리자 화면</button></div>
@@ -46,7 +46,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
     <div class="row mobile-col"><div><h2 style="margin:0">관리자 대시보드</h2><div class="muted small">학생 · 상품 · 충전 · 장부를 관리합니다.</div></div><button class="ghost" id="logoutBtn">로그아웃</button></div>
     <div class="tabs" id="adminTabs">
       <button class="active" data-admin="students">학생 관리</button>
-      <button data-admin="inventory">상품·재고</button>
+      <button data-admin="inventory">상품·재고 <span id="inventoryBadge" class="pill wait" style="display:none; margin-left:4px; padding:2px 6px;">0</span></button>
       <button data-admin="topups">충전 승인 <span id="topupBadge" class="pill wait" style="display:none; margin-left:4px; padding:2px 6px;">0</span></button>
       <button data-admin="ledger">장부</button>
       <button data-admin="settings">기금 설정</button>
@@ -169,6 +169,33 @@ function renderAdmin(){
    const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 학생';
    return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div>${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}</div></div>`;
  }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
+ // 1. 충전 승인 대기 건수 계산
+ const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
+ 
+ // 2. 품절 상품 개수 계산 (판매 중이면서 재고가 0개 미만/이하인 상품)
+ const soldOutCount = data.products.filter(p => p.active && Number(p.stock) < 1).length;
+ 
+ // 3. [충전 승인] 탭 버튼 옆에 뱃지 숫자 띄우기
+ const topupBadge = $('topupBadge');
+ if (topupBadge) {
+   topupBadge.textContent = pendingCount;
+   topupBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+ }
+
+ // 4. [상품·재고] 탭 버튼 옆에 품절 뱃지 숫자 띄우기
+ const inventoryBadge = $('inventoryBadge');
+ if (inventoryBadge) {
+   inventoryBadge.textContent = soldOutCount;
+   inventoryBadge.style.display = soldOutCount > 0 ? 'inline-block' : 'none';
+ }
+
+ // 5. 가장 상단에 있는 [관리자] 버튼에도 총 알림 개수(충전대기 + 품절) 띄우기
+ const totalAlerts = pendingCount + soldOutCount;
+ const totalBadge = $('totalBadge');
+ if (totalBadge) {
+   totalBadge.textContent = totalAlerts;
+   totalBadge.style.display = totalAlerts > 0 ? 'inline-block' : 'none';
+ }
 
  // 충전 승인 탭 뱃지 업데이트
  const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
