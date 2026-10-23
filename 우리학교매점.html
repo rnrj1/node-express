@@ -94,14 +94,16 @@ async function save() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) {
+    if (res.ok) {
+      // 저장 성공 직후 최신 데이터를 다시 불러와서 화면 동기화
+      await loadData();
+    } else {
       alert('서버 저장 중 오류가 발생했습니다.');
     }
   } catch (e) {
     console.error('Failed to save data:', e);
     alert('서버와 통신할 수 없습니다.');
   }
-  render();
 }
 
 function schoolBand(grade){grade=Number(grade);if(grade>=1&&grade<=5)return '초등';if(grade>=6&&grade<=8)return '중';if(grade>=9&&grade<=12)return '고등';return '미설정'}
@@ -225,13 +227,5 @@ $('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($
 
 // 앱 실행 시 최초 데이터 로드
 loadData();
-
-// 4초마다 서버 최신 데이터를 자동으로 동기화 (사용자가 입력 중일 때는 방해하지 않음)
-setInterval(() => {
-  const activeTag = document.activeElement ? document.activeElement.tagName : '';
-  if (activeTag !== 'INPUT' && activeTag !== 'SELECT') {
-    loadData();
-  }
-}, 4000);
 </script>
 </body></html>
