@@ -183,10 +183,21 @@ function renderAdmin(){
   </div>`;
 }).join('') || '<div class="empty">상품이 없습니다.</div>';
  
- $('topupAdminList').innerHTML=data.requests.map(r=>{
-   const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 학생';
-   return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div>${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}</div></div>`;
- }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
+ $('topupAdminList').innerHTML = data.requests.map(r => {
+  const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 학생';
+  return `<div class="listitem">
+    <div class="row mobile-col">
+      <div>
+        <b>${esc(displayName)}</b> · ${won(r.amount)}
+        <div class="muted small">${r.time}</div>
+        <span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span>
+      </div>
+      <div class="row">
+        ${r.status==='승인 대기' ? `<button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button>` : `<button class="danger" onclick="deleteTopup('${r.id}')">기록 삭제</button>`}
+      </div>
+    </div>
+  </div>`;
+}).join('') || '<div class="empty">충전 신청이 없습니다.</div>';
 
  // 충전 승인 대기 건수 및 품절 상품 개수 계산 및 뱃지 업데이트
  const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
