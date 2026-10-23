@@ -170,24 +170,24 @@ function renderAdmin(){
    return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div>${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}</div></div>`;
  }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
  // 1. 충전 승인 대기 건수 계산
- const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
- 
- // 2. 품절 상품 개수 계산 (판매 중이면서 재고가 0개 미만/이하인 상품)
- const soldOutCount = data.products.filter(p => p.active && Number(p.stock) < 1).length;
- 
- // 3. [충전 승인] 탭 버튼 옆에 뱃지 숫자 띄우기
- const topupBadge = $('topupBadge');
- if (topupBadge) {
-   topupBadge.textContent = pendingCount;
-   topupBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
- }
+const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
 
- // 4. [상품·재고] 탭 버튼 옆에 품절 뱃지 숫자 띄우기
- const inventoryBadge = $('inventoryBadge');
- if (inventoryBadge) {
-   inventoryBadge.textContent = soldOutCount;
-   inventoryBadge.style.display = soldOutCount > 0 ? 'inline-block' : 'none';
- }
+// 2. 품절 상품 개수 계산 (판매 중이면서 재고가 0개 이하인 상품)
+const soldOutCount = data.products.filter(p => p.active && Number(p.stock) < 1).length;
+
+// 3. [충전 승인] 탭 뱃지 업데이트
+const topupBadge = $('topupBadge');
+if (topupBadge) {
+  topupBadge.textContent = pendingCount;
+  topupBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+}
+
+// 4. [상품·재고] 탭 뱃지 업데이트
+const inventoryBadge = $('inventoryBadge');
+if (inventoryBadge) {
+  inventoryBadge.textContent = soldOutCount;
+  inventoryBadge.style.display = soldOutCount > 0 ? 'inline-block' : 'none';
+}
 
  // 충전 승인 탭 뱃지 업데이트
  const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
