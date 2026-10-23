@@ -208,7 +208,8 @@ function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
 function showPage(page){document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));['student','fund','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));if(page==='admin'&&!admin)$('adminPassword').focus()}
 
-$('adminToggle').onclick=()=>showPage('admin');$('adminTab').onclick=()=>showPage('admin');
+$('adminToggle').onclick = async () => { await loadData(); showPage('admin'); };
+$('adminTab').onclick = async () => { await loadData(); showPage('admin'); };
 $('studentSelect').onchange=e=>{currentStudent=e.target.value;$('topupFeedback').innerHTML='';render()};
 $('productCategoryFilter').onchange=render;$('productSort').onchange=render;
 $('requestTopup').onclick=requestTopup;
@@ -224,5 +225,12 @@ $('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($
 
 // 앱 실행 시 서버에서 데이터를 불러오도록 변경
 loadData();
+// 5초마다 자동으로 서버 최신 데이터 동기화
+setInterval(() => {
+  // 사용자가 입력 중일 때 화면이 튕기는 것을 막기 위해 관리자가 아닐 때만 백그라운드 동기화 수행
+  if (!admin && !document.hidden) {
+    loadData();
+  }
+}, 5000);
 </script>
 </body></html>
