@@ -127,7 +127,7 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
-// ② 전체 데이터 동기화/저장 API (프론트엔드에서 상태가 바뀔 때 통째로 저장)
+// ② 전체 데이터 동기화/저장 API (수정된 안전한 버전)
 app.post("/api/data", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -136,56 +136,67 @@ app.post("/api/data", async (req, res) => {
 
     // students 갱신
     await client.query("DELETE FROM students");
-    for (const s of students) {
-      await client.query(
-        "INSERT INTO students (id, name, grade, code, balance, active) VALUES ($1, $2, $3, $4, $5, $6)",
-        [s.id, s.name, s.grade, s.code, s.balance, s.active]
-      );
+    if (students && Array.isArray(students)) {
+      for (const s of students) {
+        await client.query(
+          "INSERT INTO students (id, name, grade, code, balance, active) VALUES ($1, $2, $3, $4, $5, $6)",
+          [s.id, s.name, s.grade || 1, s.code || '', s.balance || 0, s.active !== false]
+        );
+      }
     }
 
     // products 갱신
     await client.query("DELETE FROM products");
-    for (const p of products) {
-      await client.query(
-        "INSERT INTO products (id, name, category, price, stock, image, active) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [p.id, p.name, p.category, p.price, p.stock, p.image, p.active]
-      );
+    if (products && Array.isArray(products)) {
+      for (const p of products) {
+        await client.query(
+          "INSERT INTO products (id, name, category, price, stock, image, active) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          [p.id, p.name, p.category, p.price || 0, p.stock || 0, p.image || '', p.active !== false]
+        );
+      }
     }
 
-    // requests 갱신
+    // requests 갱신 (studentId와 student_id 양쪽 모두 대응)
     await client.query("DELETE FROM requests");
-    for (const r of requests) {
-      await client.query(
-        "INSERT INTO requests (id, student_id, student_name, amount, status, time) VALUES ($1, $2, $3, $4, $5, $6)",
-        [r.id, r.studentId, r.studentName, r.amount, r.status, r.time]
-      );
+    if (requests && Array.isArray(requests)) {
+      for (const r of requests) {
+        const studentId = r.studentId || r.student_id || null;
+        const studentName = r.studentName || r.student_name || '알수없음';
+        await client.query(
+          "INSERT INTO requests (id, student_id, student_name, amount, status, time) VALUES ($1, $2, $3, $4, $5, $6)",
+          [r.id, studentId, studentName, r.amount, r.status || '승인 대기', r.time]
+        );
+      }
     }
 
     // ledger 갱신
     await client.query("DELETE FROM ledger");
-    for (const l of ledger) {
-      await client.query(
-        "INSERT INTO ledger (id, type, detail, amount, student, student_id, grade, time, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-        [l.id, l.type, l.detail, l.amount, l.student, l.studentId, l.grade, l.time, l.timestamp]
-      );
+    if (ledger && Array.isArray(ledger)) {
+      for (const l of ledger) {
+        const lStudentId = l.studentId || l.student_id || null;
+        await client.query(
+          "INSERT INTO ledger (id, type, detail, amount, student, student_id, grade, time, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+          [l.id, l.type, l.detail, l.amount, l.student || '', lStudentId, l.grade || null, l.time, l.timestamp || Date.now()]
+        );
+      }
     }
 
     // settings 갱신
     await client.query(
       "INSERT INTO settings (key, value) VALUES ('goal', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
-      [goal]
+      [goal || 100000]
     );
     await client.query(
       "INSERT INTO settings (key, value) VALUES ('fund', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
-      [fund]
+      [fund || 0]
     );
 
     await client.query("COMMIT");
     res.json({ success: true });
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("데이터 저장 실패:", error);
-    res.status(500).json({ error: "Failed to save data" });
+    console.error("데이터 저장 실패:", error.message);
+    res.status(500).json({ error: "Failed to save data", details: error.message });
   } finally {
     client.release();
   }
