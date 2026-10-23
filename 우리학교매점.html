@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>매점 키오스크</title>
+<style>
+:root{--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f5f7fb;--blue:#315efb;--green:#138a54;--red:#c0392b;--card:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.top{max-width:1100px;margin:auto;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:20px;font-weight:800;display:flex;gap:10px;align-items:center}.logo{background:#eaf0ff;border-radius:12px;padding:9px}
+button,input,select,textarea{font:inherit}button{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}button.secondary{background:#eef2ff;color:#2746b8}button.ghost{background:#f3f4f6;color:#374151}button.danger{background:#fff0ef;color:var(--red)}button:disabled{opacity:.45;cursor:not-allowed}
+main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;border-radius:20px;background:linear-gradient(120deg,#eaf0ff,#e9fbf2);margin-bottom:22px}.hero h1{margin:0 0 8px;font-size:clamp(25px,4vw,36px)}.muted{color:var(--muted)}.small{font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tabs button{background:#e9edf5;color:#374151}.tabs button.active{background:var(--blue);color:white}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 2px 10px #1f293708}.card h3{margin:0 0 8px}.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.stack{display:grid;gap:12px}.field{display:grid;gap:6px}.field label{font-weight:700;font-size:14px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;background:white;color:var(--ink)}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.price{font-size:24px;font-weight:800}.pill{display:inline-block;border-radius:99px;background:#eef2ff;color:#344db8;padding:4px 9px;font-size:12px;font-weight:700}.pill.wait{background:#fff4d8;color:#8a5a00}.pill.ok{background:#e5f8ed;color:#117344}.pill.no{background:#ffedeb;color:#a72c21}.listitem{padding:13px 0;border-bottom:1px solid var(--line)}.listitem:last-child{border:0}.notice{background:#fff8e8;border:1px solid #f2dfac;border-radius:12px;padding:12px;color:#795b16;font-size:13px}.success{background:#e8f8ef;color:#126c40;padding:12px;border-radius:10px}.empty{padding:25px;text-align:center;color:var(--muted)}.product-thumb{width:58px;height:58px;object-fit:cover;border-radius:12px;background:#f3f4f6;border:1px solid var(--line);flex-shrink:0}.product-image-large{width:100%;height:150px;object-fit:cover;border-radius:12px;background:#f3f4f6}.product-info{display:flex;align-items:center;gap:12px}.daily-income{font-size:13px;color:var(--green);font-weight:700;margin-top:4px}.sortbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}.hidden{display:none!important}footer{text-align:center;padding:24px;color:var(--muted);font-size:12px}
+@media(max-width:600px){.top{padding:12px 14px}.top .brand{font-size:17px}main{padding:0 14px 35px;margin-top:18px}.hero{padding:20px}.row.mobile-col{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header><div class="top"><div class="brand"><span class="logo">🛍️</span> 우리 학교 매점</div><button class="secondary" id="adminToggle">관리자</button></div></header>
+<main>
+<section class="hero"><h1>학교 매점에 오신 걸 환영해요!</h1><div class="muted">이름을 선택하고 포인트로 상품을 구매해 보세요.</div></section>
+<div class="tabs"><button class="active" data-page="student">학생 매점</button><button data-page="fund">학교 기금</button><button data-page="admin" id="adminTab" class="hidden">관리자 화면</button></div>
+<section id="studentPage">
+  <div class="card stack" style="margin-bottom:16px">
+    <div class="field"><label for="studentSelect">학생 이름 선택</label><select id="studentSelect"></select></div>
+    <div id="studentSummary" class="success hidden"></div>
+    <div class="notice">구매한 상품을 식사 시간 전에 먹어서 <b>급식을 먹지 못하는</b> 일이 발생하지 않도록 주의해주세요.<br>무조건 <b>담임선생님의 지도</b>하에 이용해주세요.</div>
+  </div>
+  <div class="row" style="margin:18px 0 12px"><h2 style="margin:0">상품 목록</h2><span class="muted small">재고가 있는 상품만 구매 가능</span></div>
+  <div class="sortbar"><div class="field"><label for="productCategoryFilter">카테고리</label><select id="productCategoryFilter"><option value="all">전체 카테고리</option><option>과자</option><option>음료</option><option>젤리&초콜릿</option><option>면류</option><option>기타</option></select></div><div class="field"><label for="productSort">정렬 방식</label><select id="productSort"><option value="category-desc">카테고리별 · 가격 높은 순</option><option value="category-asc">카테고리별 · 가격 낮은 순</option><option value="price-desc">가격 높은 순 · 카테고리 묶기</option><option value="price-asc">가격 낮은 순 · 카테고리 묶기</option></select></div></div><div id="products" class="grid"></div>
+  <div class="grid" style="margin-top:18px">
+    <div class="card stack"><h3>포인트 충전 신청</h3><div class="muted small">관리자에게 현금을 전달한 뒤 신청해 주세요. 승인되기 전에는 포인트가 지급되지 않습니다.</div>
+      <div class="field"><label for="topupAmount">신청 금액 (원)</label><input id="topupAmount" type="number" min="1" step="1" value="5000" placeholder="금액을 직접 입력"></div>
+      <button id="requestTopup">충전 신청하기</button><div id="topupFeedback"></div>
+    </div>
+    <div class="card"><h3>내 충전 신청 내역</h3><div id="myRequests" class="muted small">학생을 선택하면 내역이 표시됩니다.</div><button class="ghost" id="resetStudent" style="margin-top:14px">처음 화면으로</button></div>
+  </div>
+</section>
+<section id="fundPage" class="hidden">
+  <div class="card stack" style="padding:26px;margin-bottom:16px"><div class="muted">전체 모금 진행도</div><h2 style="font-size:28px;margin:0">학교 물품 기금</h2><div class="muted">학생 매점의 수익을 학교에 필요한 물품 마련에 보탭니다.</div><div class="row"><span>현재 모금액</span><b id="fundCurrentText" style="font-size:24px">0P</b></div><div class="row"><span>전체 모금 목표</span><b id="fundGoalText">100,000P</b></div><div style="height:18px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div id="fundBar" style="height:100%;width:0;background:#20a464;transition:width .25s"></div></div><div id="fundPercent" class="muted small">0% 달성</div><div id="fundMessage" class="success">한 걸음씩 함께 모아 봐요!</div></div><h2 style="margin:0 0 12px">학군별 모금 현황</h2><div id="fundGroups" class="grid"></div>
+</section>
+<section id="adminPage" class="hidden">
+  <div id="adminLogin" class="card stack" style="max-width:480px;margin:auto"><h2 style="margin:0">관리자 로그인</h2><div class="muted small">비밀번호 분실 시 <b>12학년 이민찬</b>에게 문의해주세요.</div><div class="field"><label for="adminPassword">관리자 비밀번호</label><input id="adminPassword" type="password" placeholder="비밀번호 입력"></div><button id="adminLoginBtn">로그인</button><div id="loginError" class="muted small"></div></div>
+  <div id="adminPanel" class="hidden">
+    <div class="row mobile-col"><div><h2 style="margin:0">관리자 대시보드</h2><div class="muted small">학생 · 상품 · 충전 · 장부를 관리합니다.</div></div><button class="ghost" id="logoutBtn">로그아웃</button></div>
+    <div class="tabs" id="adminTabs"><button class="active" data-admin="students">학생 관리</button><button data-admin="inventory">상품·재고</button><button data-admin="topups">충전 승인</button><button data-admin="ledger">장부</button><button data-admin="settings">기금 설정</button></div>
+    <div id="adminStudents" class="adminSub">
+      <div class="card stack" style="margin-bottom:14px"><h3>학생 프로필 추가</h3><div class="formgrid"><div class="field"><label>학년</label><select id="newStudentGrade"><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option><option value="7">7학년</option><option value="8">8학년</option><option value="9">9학년</option><option value="10">10학년</option><option value="11">11학년</option><option value="12">12학년</option></select></div><div class="field"><label>학생 이름</label><input id="newStudentName" placeholder="예: 김민수"></div><div class="field"><label>식별 코드 (선택)</label><input id="newStudentCode" placeholder="필요 없으면 비워 두세요"></div></div><button id="addStudent">학생 추가</button></div><div class="card"><h3>등록된 학생</h3><div id="studentAdminList"></div></div>
+    </div>
+    <div id="adminInventory" class="adminSub hidden">
+      <div class="card stack" style="margin-bottom:14px"><h3>새 상품 등록</h3><div class="formgrid"><div class="field"><label>상품 이름</label><input id="newProductName" placeholder="예: 초코 과자"></div><div class="field"><label>분류</label><select id="newProductCategory"><option>과자</option><option>음료</option><option>젤리&초콜릿</option><option>면류</option><option>기타</option></select></div><div class="field"><label>가격 (포인트)</label><input id="newProductPrice" type="number" min="0" value="1000"></div><div class="field"><label>초기 재고</label><input id="newProductStock" type="number" min="0" value="10"></div><div class="field"><label>상품 사진 (선택)</label><input id="newProductImage" type="file" accept="image/*"><span class="muted small">사진은 자동으로 줄여 저장합니다.</span></div></div><button id="addProduct">상품 등록</button></div><div class="card"><h3>상품 및 재고 목록</h3><div id="inventoryList"></div></div>
+    </div>
+    <div id="adminTopups" class="adminSub hidden"><div class="card"><h3>충전 승인 대기 및 기록</h3><div id="topupAdminList"></div></div></div>
+    <div id="adminLedger" class="adminSub hidden"><div class="card stack"><h3>거래 장부</h3><div class="grid"><div class="card"><div class="muted small">판매로 얻은 금액 합계</div><div class="price" id="ledgerIncomeTotal">0P</div><div id="ledgerDailyIncome" class="daily-income">오늘 0P</div></div><div class="card"><div class="muted small">장부 기록 수</div><div class="price" id="ledgerCount">0건</div></div></div><div class="notice">각 기록의 삭제 버튼으로 필요한 내역만 지울 수 있어요. 삭제는 장부 기록에만 적용되며, 학생 포인트·재고·기금 금액은 자동으로 되돌리지 않습니다.</div><div id="ledgerList"></div></div></div>
+    <div id="adminSettings" class="adminSub hidden"><div class="card stack"><h3>학교 기금 설정</h3><div class="field"><label>모금 목표 (포인트)</label><input id="goalInput" type="number" min="1"></div><div class="field"><label>현재 기금 (포인트)</label><input id="fundInput" type="number" min="0"></div><button id="saveFund">기금 설정 저장</button><div class="muted small">실제 현금과 기금 잔액은 담당자가 별도로 대조해야 합니다.</div></div></div>
+  </div>
+</section>
+</main><footer>학교 매점 데모 · 실제 운영 전에는 보안 인증과 온라인 데이터베이스 연결이 필요합니다.</footer>
+<script>
+const KEY='school-store-demo-v1';
+const initial={students:[{id:'s1',name:'학생 A',grade:1,code:'',balance:3000,active:true},{id:'s2',name:'학생 B',grade:2,code:'',balance:1500,active:true},{id:'s3',name:'학생 C',grade:3,code:'',balance:0,active:true}],products:[{id:'p1',name:'초코 과자',category:'과자',price:1000,stock:8,active:true},{id:'p2',name:'주스',category:'음료',price:1500,stock:5,active:true},{id:'p3',name:'연필',category:'기타',price:500,stock:12,active:true}],requests:[],ledger:[],goal:100000,fund:0};
+let data;try{data=JSON.parse(localStorage.getItem(KEY))||structuredClone(initial)}catch(e){data=JSON.parse(JSON.stringify(initial))}
+let currentStudent='',admin=false;
+const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
+// Upgrade older local data without discarding existing balances or records.
+if(data.products){data.products.forEach(p=>{if(p.category==='간식')p.category='과자';else if(p.category==='문구류')p.category='기타';if(!categoryOrder.includes(p.category))p.category='기타';if(typeof p.image!=='string')p.image='';});} 
+const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function schoolBand(grade){grade=Number(grade);if(grade>=1&&grade<=5)return '초등';if(grade>=6&&grade<=8)return '중';if(grade>=9&&grade<=12)return '고등';return '미설정'}
+function sortedStudents(list){return [...list].sort((a,b)=>{const ga=Number(a.grade)||99,gb=Number(b.grade)||99;return ga-gb||a.name.localeCompare(b.name,'ko')})}
+function addLedger(type,detail,amount,student='',studentId=''){const matched=data.students.find(s=>s.id===studentId)||data.students.find(s=>s.name===student);data.ledger.unshift({id:Date.now()+Math.random(),type,detail,amount,student,studentId:matched?.id||'',grade:matched?.grade||null,time:new Date().toLocaleString('ko-KR'),timestamp:Date.now()})}
+function render(){
+ const activeStudents=sortedStudents(data.students.filter(s=>s.active));let studentOptions='<option value="">학생을 선택하세요</option>';let lastGradeGroup='';activeStudents.forEach(s=>{const group=s.grade?`${s.grade}학년`:'학년 미설정';if(group!==lastGradeGroup){if(lastGradeGroup)studentOptions+='</optgroup>';studentOptions+=`<optgroup label="${group}">`;lastGradeGroup=group}studentOptions+=`<option value="${s.id}">${esc(s.name)}</option>`});if(lastGradeGroup)studentOptions+='</optgroup>';$('studentSelect').innerHTML=studentOptions;
+ $('studentSelect').value=currentStudent;
+ const st=data.students.find(s=>s.id===currentStudent&&s.active);
+ $('studentSummary').classList.toggle('hidden',!st);
+ $('studentSummary').innerHTML=st?`<div class="row"><span>${esc(st.name)}님의 포인트</span><b style="font-size:22px">${money(st.balance)}</b></div>`:'';
+ const chosenCategory=$('productCategoryFilter').value,sortMode=$('productSort').value;let visibleProducts=data.products.filter(p=>p.active&&(chosenCategory==='all'||p.category===chosenCategory));visibleProducts.sort((a,b)=>{const cat=categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category);if(sortMode==='category-desc')return cat||Number(b.price)-Number(a.price)||a.name.localeCompare(b.name,'ko');if(sortMode==='category-asc')return cat||Number(a.price)-Number(b.price)||a.name.localeCompare(b.name,'ko');if(sortMode==='price-desc')return Number(b.price)-Number(a.price)||cat||a.name.localeCompare(b.name,'ko');return Number(a.price)-Number(b.price)||cat||a.name.localeCompare(b.name,'ko')});
+ $('products').innerHTML=visibleProducts.map(p=>`<div class="card stack">${p.image?`<img class="product-image-large" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-image-large" style="display:grid;place-items:center;font-size:36px">🛍️</div>'}<div class="row"><span class="pill">${esc(p.category)}</span><span class="muted small">재고 ${p.stock}개</span></div><div><h3>${esc(p.name)}</h3><div class="price">${money(p.price)}</div></div><button ${!st||p.stock<1||st.balance<p.price?'disabled':''} onclick="buy('${p.id}')">${p.stock<1?'품절':!st?'학생 선택':st.balance<p.price?'포인트 부족':'구매하기'}</button></div>`).join('')||'<div class="empty">등록된 상품이 없습니다.</div>';
+ const reqs=data.requests.filter(r=>r.studentId===currentStudent);
+ $('myRequests').innerHTML=st?(reqs.length?reqs.map(r=>`<div class="listitem"><div class="row"><b>${won(r.amount)}</b><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div><div class="muted small">${r.time}</div></div>`).join(''):'아직 충전 신청이 없습니다.'):'학생을 선택하면 내역이 표시됩니다.';
+ $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name===l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
+ renderAdmin();
+}
+function buy(id){const st=data.students.find(s=>s.id===currentStudent),p=data.products.find(p=>p.id===id);if(!st||!p||!p.active||p.stock<1||st.balance<p.price)return;if(!confirm(`${p.name}을(를) ${money(p.price)}에 구매할까요?`))return;st.balance-=p.price;p.stock--;addLedger('판매',p.name+' 구매',p.price,st.name,st.id);data.fund+=p.price;save();alert('구매 완료! 남은 포인트: '+money(st.balance))}
+function requestTopup(){const st=data.students.find(s=>s.id===currentStudent);if(!st){alert('먼저 학생 이름을 선택해 주세요.');return}const amount=Number($('topupAmount').value);if(!Number.isSafeInteger(amount)||amount<1){alert('충전 금액은 1,000원 이상의 정수로 입력해 주세요.');return}if(!confirm(`${st.name} 이름으로 ${won(amount)} 충전을 신청할까요? 실제 현금을 관리자에게 전달한 뒤 승인받아 주세요.`))return;data.requests.unshift({id:'r'+Date.now(),studentId:st.id,studentName:st.name,amount,status:'승인 대기',time:new Date().toLocaleString('ko-KR')});$('topupFeedback').innerHTML='<div class="success">신청이 등록됐어요. 관리자 확인 후 포인트가 지급됩니다.</div>';save()}
+function renderAdmin(){
+ if(!admin)return;
+ $('studentAdminList').innerHTML=sortedStudents(data.students).map(s=>`<div class="listitem"><div class="row mobile-col"><div><b>${s.grade?`${s.grade}학년 · `:'학년 미설정 · '}${esc(s.name)}</b><div class="muted small">잔액 ${money(s.balance)} · ${s.active?'사용 중':'비활성화'}</div></div><div class="row"><button class="secondary" onclick="editStudent('${s.id}')">수정</button><button class="${s.active?'danger':'secondary'}" onclick="toggleStudent('${s.id}')">${s.active?'비활성화':'활성화'}</button><button class="danger" onclick="deleteStudent('${s.id}')">학생 삭제</button></div></div></div>`).join('')||'<div class="empty">학생이 없습니다.</div>';
+ $('inventoryList').innerHTML=[...data.products].sort((a,b)=>categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category)||Number(b.price)-Number(a.price)||a.name.localeCompare(b.name,'ko')).map(p=>`<div class="listitem"><div class="row mobile-col"><div class="product-info">${p.image?`<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}<div><b>${esc(p.name)}</b> <span class="pill">${esc(p.category)}</span><div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active?'판매 중':'판매 중단'}</div></div></div><div class="row"><button class="secondary" onclick="editProduct('${p.id}')">수정</button><button class="secondary" onclick="restock('${p.id}')">재고 추가</button><button class="ghost" onclick="toggleProduct('${p.id}')">${p.active?'판매 중단':'판매 재개'}</button><button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button></div></div></div>`).join('')||'<div class="empty">상품이 없습니다.</div>';
+ $('topupAdminList').innerHTML=data.requests.map(r=>`<div class="listitem"><div class="row mobile-col"><div><b>${esc(r.studentName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div>${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}</div></div>`).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
+ const sales=data.ledger.filter(l=>l.type==='판매');$('ledgerIncomeTotal').textContent=money(sales.reduce((sum,l)=>sum+Number(l.amount||0),0));const todayPrefix=new Date().toLocaleDateString('ko-KR');const daily=sales.filter(l=>l.timestamp?new Date(l.timestamp).toDateString()===new Date().toDateString():String(l.time||'').startsWith(todayPrefix)).reduce((sum,l)=>sum+Number(l.amount||0),0);$('ledgerDailyIncome').textContent='오늘 '+money(daily);$('ledgerCount').textContent=data.ledger.length+'건';
+ $('ledgerList').innerHTML=data.ledger.map(l=>`<div class="listitem"><div class="row mobile-col"><div><b>${esc(l.type)} · ${esc(l.detail)}</b><b>${money(l.amount)}</b><div class="muted small">${esc(l.student||'')} · ${esc(l.time)}</div></div><button class="danger" onclick="deleteLedger('${l.id}')">이 기록 삭제</button></div></div>`).join('')||'<div class="empty">기록이 없습니다.</div>';
+ $('goalInput').value=data.goal;$('fundInput').value=data.fund;
+}
+function editStudent(id) {
+    const s = data.students.find(x => x.id === id);
+    if (!s) return;
+
+    // 학년 수정
+    const gradeText = prompt(
+        '학년을 입력해 주세요 (1~12)',
+        s.grade || ''
+    );
+    if (gradeText === null) return;
+
+    const grade = Number(gradeText);
+    if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+        alert('학년은 1부터 12 사이의 정수로 입력해 주세요.');
+        return;
+    }
+
+    // 이름 수정
+    const name = prompt('학생 이름', s.name);
+    if (name === null) return;
+
+    if (!name.trim()) {
+        alert('학생 이름을 입력해 주세요.');
+        return;
+    }
+
+    // 잔액 수정
+    const balanceText = prompt(
+        '학생 잔액을 입력해 주세요 (포인트)',
+        String(s.balance)
+    );
+    if (balanceText === null) return;
+
+    const balance = Number(balanceText);
+    if (!Number.isSafeInteger(balance) || balance < 0) {
+        alert('잔액은 0 이상의 정수로 입력해 주세요.');
+        return;
+    }
+
+    // 모든 입력이 정상일 때 변경 사항 적용
+    const oldName = s.name;
+
+    s.grade = grade;
+    s.name = name.trim();
+    s.balance = balance;
+
+    // 기존 장부의 학생 정보 갱신
+    data.ledger.forEach(l => {
+        if (
+            l.studentId === id ||
+            (!l.studentId && l.student === oldName)
+        ) {
+            l.studentId = id;
+            l.grade = grade;
+            l.student = s.name;
+        }
+    });
+
+    // 대기 중인 충전 신청의 이름 갱신
+    data.requests
+        .filter(r => r.studentId === id && r.status === '승인 대기')
+        .forEach(r => {
+            r.studentName = s.name;
+        });
+
+    save();
+}
+function toggleStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;s.active=!s.active;save()}
+function deleteStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;const pending=data.requests.some(r=>r.studentId===id&&r.status==='승인 대기');const msg=`${s.grade?s.grade+'학년 ':''}${s.name} 학생을 완전히 삭제할까요?\n잔액 ${money(s.balance)}과 이 학생의 프로필이 삭제됩니다. 과거 장부 기록은 보존됩니다.${pending?'\n이 학생의 대기 중 충전 신청도 함께 삭제됩니다.':''}`;if(!confirm(msg))return;data.students=data.students.filter(x=>x.id!==id);data.requests=data.requests.filter(r=>!(r.studentId===id&&r.status==='승인 대기'));if(currentStudent===id)currentStudent='';save()}
+function editProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;const name=prompt('상품 이름',p.name);if(name===null)return;const price=prompt('판매 가격 (포인트)',p.price);if(price===null)return;const stock=prompt('상품 재고',p.stock);if(stock===null)return;const n=Number(price);if(!name.trim()||!Number.isInteger(n)||n<0){alert('이름과 가격을 확인해 주세요.');return}const category=prompt('카테고리 입력: 과자 / 음료 / 젤리&초콜릿 / 면류 / 기타',p.category);if(category===null)return;if(!categoryOrder.includes(category.trim())){alert('목록에 있는 카테고리 중 하나를 입력해 주세요.');return}p.name=name.trim();p.price=n;p.category=category.trim();p.stock=stock.trim();save()}
+function restock(id){const p=data.products.find(x=>x.id===id),n=Number(prompt('추가할 재고 수량', '10'));if(!Number.isInteger(n)||n<=0){alert('1개 이상의 정수를 입력해 주세요.');return}p.stock+=n;addLedger('입고',p.name+' 재고 '+n+'개 추가',0);save()}
+function toggleProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;p.active=!p.active;save()}
+function deleteProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;if(!confirm(`상품 ‘${p.name}’을 목록에서 완전히 삭제할까요?\n과거 장부 기록은 보존됩니다.`))return;data.products=data.products.filter(x=>x.id!==id);save()}
+function approve(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(!confirm(`${r.studentName} 학생에게 ${won(r.amount)} 현금을 실제로 받았나요? 확인 후 승인하면 포인트가 지급됩니다.`))return;const s=data.students.find(x=>x.id===r.studentId);if(!s){alert('학생 프로필을 찾을 수 없습니다.');return}s.balance+=r.amount;r.status='승인 완료';r.approvedAt=new Date().toLocaleString('ko-KR');addLedger('충전',`현금 충전 승인`,r.amount,s.name,s.id);save()}
+function reject(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(confirm('이 충전 신청을 거절할까요?')){r.status='거절';save()}}
+function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(id));if(!entry)return;if(!confirm(`장부 기록 ‘${entry.type} · ${entry.detail}’을 삭제할까요?\n학생 포인트, 재고, 기금은 변경되지 않습니다.`))return;data.ledger=data.ledger.filter(l=>String(l.id)!==String(id));save()}
+function showPage(page){document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));['student','fund','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));if(page==='admin'&&!admin)$('adminPassword').focus()}
+document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
+$('adminToggle').onclick=()=>showPage('admin');$('adminTab').onclick=()=>showPage('admin');
+$('studentSelect').onchange=e=>{currentStudent=e.target.value;$('topupFeedback').innerHTML='';render()};
+$('productCategoryFilter').onchange=render;$('productSort').onchange=render;
+$('requestTopup').onclick=requestTopup;
+$('resetStudent').onclick=()=>{currentStudent='';$('topupFeedback').innerHTML='';render();showPage('student')};
+$('adminLoginBtn').onclick=()=>{if($('adminPassword').value==='1123'){admin=true;$('adminLogin').classList.add('hidden');$('adminPanel').classList.remove('hidden');$('adminTab').classList.remove('hidden');$('loginError').textContent='';renderAdmin()}else $('loginError').textContent='비밀번호가 올바르지 않습니다.'};
+$('adminPassword').onkeydown=e=>{if(e.key==='Enter')$('adminLoginBtn').click()};
+$('logoutBtn').onclick=()=>{admin=false;$('adminLogin').classList.remove('hidden');$('adminPanel').classList.add('hidden');$('adminTab').classList.add('hidden');$('adminPassword').value='';showPage('student')};
+document.querySelectorAll('[data-admin]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-admin]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.adminSub').forEach(x=>x.classList.add('hidden'));$('admin'+b.dataset.admin[0].toUpperCase()+b.dataset.admin.slice(1)).classList.remove('hidden')});
+$('addStudent').onclick=()=>{const grade=Number($('newStudentGrade').value),name=$('newStudentName').value.trim(),code=$('newStudentCode').value.trim();if(!name){alert('학생 이름을 입력해 주세요.');return}if(data.students.some(s=>s.active&&Number(s.grade)===grade&&s.name===name)){alert('같은 학년과 이름의 학생이 이미 있습니다.');return}data.students.push({id:'s'+Date.now(),grade,name,code,balance:0,active:true});$('newStudentName').value='';$('newStudentCode').value='';save()};
+function readProductImage(file){return new Promise((resolve,reject)=>{if(!file){resolve('');return}if(!file.type.startsWith('image/')){reject(new Error('이미지 파일을 선택해 주세요.'));return}const reader=new FileReader();reader.onerror=()=>reject(new Error('사진을 읽지 못했습니다.'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('사진 파일을 열 수 없습니다.'));img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.72))};img.src=reader.result};reader.readAsDataURL(file)})}
+$('addProduct').onclick=async()=>{const name=$('newProductName').value.trim(),category=$('newProductCategory').value,price=Number($('newProductPrice').value),stock=Number($('newProductStock').value),file=$('newProductImage').files[0];if(!name||!Number.isInteger(price)||price<0||!Number.isInteger(stock)||stock<0){alert('상품명, 가격, 재고를 확인해 주세요.');return}try{const image=await readProductImage(file);data.products.push({id:'p'+Date.now(),name,category,price,stock,image,active:true});$('newProductName').value='';$('newProductImage').value='';save()}catch(err){alert(err.message||'사진을 처리하지 못했습니다.')}};
+$('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($('fundInput').value);if(!Number.isInteger(goal)||goal<1||!Number.isInteger(fund)||fund<0){alert('기금 목표와 금액을 확인해 주세요.');return}data.goal=goal;data.fund=fund;save();alert('기금 설정을 저장했습니다.')};
+render();
+</script>
+</body></html>
