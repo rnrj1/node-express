@@ -223,14 +223,15 @@ function readProductImage(file){return new Promise((resolve,reject)=>{if(!file){
 $('addProduct').onclick=async()=>{const name=$('newProductName').value.trim(),category=$('newProductCategory').value,price=Number($('newProductPrice').value),stock=Number($('newProductStock').value),file=$('newProductImage').files[0];if(!name||!Number.isInteger(price)||price<0||!Number.isInteger(stock)||stock<0){alert('상품명, 가격, 재고를 확인해 주세요.');return}try{const image=await readProductImage(file);data.products.push({id:'p'+Date.now(),name,category,price,stock,image,active:true});$('newProductName').value='';$('newProductImage').value='';save()}catch(err){alert(err.message||'사진을 처리하지 못했습니다.')}};
 $('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($('fundInput').value);if(!Number.isInteger(goal)||goal<1||!Number.isInteger(fund)||fund<0){alert('기금 목표와 금액을 확인해 주세요.');return}data.goal=goal;data.fund=fund;save();alert('기금 설정을 저장했습니다.')};
 
-// 앱 실행 시 서버에서 데이터를 불러오도록 변경
+// 앱 실행 시 최초 데이터 로드
 loadData();
-// 5초마다 자동으로 서버 최신 데이터 동기화
+
+// 4초마다 서버 최신 데이터를 자동으로 동기화 (사용자가 입력 중일 때는 방해하지 않음)
 setInterval(() => {
-  // 사용자가 입력 중일 때 화면이 튕기는 것을 막기 위해 관리자가 아닐 때만 백그라운드 동기화 수행
-  if (!admin && !document.hidden) {
+  const activeTag = document.activeElement ? document.activeElement.tagName : '';
+  if (activeTag !== 'INPUT' && activeTag !== 'SELECT') {
     loadData();
   }
-}, 5000);
+}, 4000);
 </script>
 </body></html>
