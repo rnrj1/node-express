@@ -23,11 +23,10 @@ const pool = new Pool({
     : undefined
 });
 
-// 📌 [추가된 부분] 서버가 켜질 때 DB 테이블을 자동으로 생성하는 함수
+// 1. 서버 시작 시 DB 테이블 및 샘플 데이터 초기화 함수
 async function initDatabase() {
   try {
     await pool.query(`
-      -- 1. 학생 테이블
       CREATE TABLE IF NOT EXISTS students (
           id VARCHAR(50) PRIMARY KEY,
           name VARCHAR(100) NOT NULL,
@@ -37,7 +36,6 @@ async function initDatabase() {
           active BOOLEAN DEFAULT TRUE
       );
       
-      -- 2. 상품 테이블
       CREATE TABLE IF NOT EXISTS products (
           id VARCHAR(50) PRIMARY KEY,
           name VARCHAR(100) NOT NULL,
@@ -48,7 +46,6 @@ async function initDatabase() {
           active BOOLEAN DEFAULT TRUE
       );
 
-      -- 3. 충전 신청 테이블
       CREATE TABLE IF NOT EXISTS requests (
           id VARCHAR(50) PRIMARY KEY,
           student_id VARCHAR(50),
@@ -58,7 +55,6 @@ async function initDatabase() {
           time VARCHAR(100) NOT NULL
       );
 
-      -- 4. 거래 장부 테이블
       CREATE TABLE IF NOT EXISTS ledger (
           id VARCHAR(50) PRIMARY KEY,
           type VARCHAR(50) NOT NULL,
@@ -71,24 +67,20 @@ async function initDatabase() {
           timestamp BIGINT NOT NULL
       );
 
-      -- 5. 기금 설정 테이블
       CREATE TABLE IF NOT EXISTS settings (
           key VARCHAR(50) PRIMARY KEY,
           value INTEGER NOT NULL
       );
 
-      -- 기본 기금 설정값 초기화 (목표 10만포인트, 현재 0포인트)
       INSERT INTO settings (key, value) VALUES ('goal', 100000), ('fund', 0)
       ON CONFLICT (key) DO NOTHING;
 
-      -- 6. 초기 샘플 데이터 (학생 A, B, C 추가)
       INSERT INTO students (id, name, grade, code, balance, active) VALUES 
       ('s1', '학생 A', 1, '', 3000, TRUE),
       ('s2', '학생 B', 2, '', 1500, TRUE),
       ('s3', '학생 C', 3, '', 0, TRUE)
       ON CONFLICT (id) DO NOTHING;
 
-      -- 7. 초기 샘플 데이터 (초코 과자, 주스, 연필 추가)
       INSERT INTO products (id, name, category, price, stock, image, active) VALUES 
       ('p1', '초코 과자', '과자', 1000, 8, '', TRUE),
       ('p2', '주스', '음료', 1500, 5, '', TRUE),
@@ -101,6 +93,105 @@ async function initDatabase() {
   }
 }
 
+// -------------------------------------------------------------
+// 📌 2단계: 백엔드 API 라우터 추가
+// -------------------------------------------------------------
+
+// ① 전체 데이터 가져오기 API (프론트엔드가 켜질 때 호출)
+app.get("/api/data", async (req, res) => {
+  try {
+    const studentsRes = await pool.query("SELECT * FROM students");
+    const productsRes = await pool.query("SELECT * FROM products");
+    const requestsRes = await pool.query("SELECT * FROM requests");
+    const ledgerRes = await pool.query("SELECT * FROM ledger ORDER BY timestamp DESC");
+    const settingsRes = await pool.query("SELECT * FROM settings");
+
+    let goal = 100000;
+    let fund = 0;
+    settingsRes.rows.forEach(row => {
+      if (row.key === 'goal') goal = row.value;
+      if (row.key === 'fund') fund = row.value;
+    });
+
+    res.json({
+      students: studentsRes.rows,
+      products: productsRes.rows,
+      requests: requestsRes.rows,
+      ledger: ledgerRes.rows,
+      goal,
+      fund
+    });
+  } catch (error) {
+    console.error("데이터 조회 실패:", error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
+// ② 전체 데이터 동기화/저장 API (프론트엔드에서 상태가 바뀔 때 통째로 저장)
+app.post("/api/data", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { students, products, requests, ledger, goal, fund } = req.body;
+
+    // students 갱신
+    await client.query("DELETE FROM students");
+    for (const s of students) {
+      await client.query(
+        "INSERT INTO students (id, name, grade, code, balance, active) VALUES ($1, $2, $3, $4, $5, $6)",
+        [s.id, s.name, s.grade, s.code, s.balance, s.active]
+      );
+    }
+
+    // products 갱신
+    await client.query("DELETE FROM products");
+    for (const p of products) {
+      await client.query(
+        "INSERT INTO products (id, name, category, price, stock, image, active) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        [p.id, p.name, p.category, p.price, p.stock, p.image, p.active]
+      );
+    }
+
+    // requests 갱신
+    await client.query("DELETE FROM requests");
+    for (const r of requests) {
+      await client.query(
+        "INSERT INTO requests (id, student_id, student_name, amount, status, time) VALUES ($1, $2, $3, $4, $5, $6)",
+        [r.id, r.studentId, r.studentName, r.amount, r.status, r.time]
+      );
+    }
+
+    // ledger 갱신
+    await client.query("DELETE FROM ledger");
+    for (const l of ledger) {
+      await client.query(
+        "INSERT INTO ledger (id, type, detail, amount, student, student_id, grade, time, timestamp) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+        [l.id, l.type, l.detail, l.amount, l.student, l.studentId, l.grade, l.time, l.timestamp]
+      );
+    }
+
+    // settings 갱신
+    await client.query(
+      "INSERT INTO settings (key, value) VALUES ('goal', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+      [goal]
+    );
+    await client.query(
+      "INSERT INTO settings (key, value) VALUES ('fund', $1) ON CONFLICT (key) DO UPDATE SET value = $1",
+      [fund]
+    );
+
+    await client.query("COMMIT");
+    res.json({ success: true });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("데이터 저장 실패:", error);
+    res.status(500).json({ error: "Failed to save data" });
+  } finally {
+    client.release();
+  }
+});
+
+// 기존 헬스체크 API
 app.get("/api/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -115,8 +206,7 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "우리학교매점.html"));
 });
 
-// 서버를 실행하기 전, DB 테이블을 먼저 생성하도록 수정
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`Server listening on ${PORT}`);
-  await initDatabase(); // 서버 켜질 때 테이블 생성 함수 실행!
+  await initDatabase();
 });
