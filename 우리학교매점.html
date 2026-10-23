@@ -17,7 +17,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
 </style>
 </head>
 <body>
-<header><div class="top"><div class="brand"><span class="logo">🛍️</span> 우리 학교 매점</div><button class="secondary" id="adminToggle">관리자</button>
+<header><div class="top"><div class="brand"><span class="logo">🛍️</span> 우리 학교 매점</div><button class="secondary" id="adminToggle">관리자</button></div></header>
 <main>
 <section class="hero"><h1>학교 매점에 오신 걸 환영해요!</h1><div class="muted">이름을 선택하고 포인트로 상품을 구매해 보세요.</div></section>
 <div class="tabs"><button class="active" data-page="student">학생 매점</button><button data-page="fund">학교 기금</button><button data-page="admin" id="adminTab" class="hidden">관리자 화면</button></div>
@@ -66,12 +66,11 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
 <script>
 let data = {students:[], products:[], requests:[], ledger:[], goal:100000, fund:0};
 let currentStudent='';
-let admin = sessionStorage.getItem('school_admin_auth') === 'true'; // 새로고침 시 로그인 상태 유지
+let admin = sessionStorage.getItem('school_admin_auth') === 'true';
 
 const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// 서버에서 데이터 불러오기
 async function loadData() {
   try {
     const res = await fetch('/api/data');
@@ -92,7 +91,6 @@ async function loadData() {
   }
 }
 
-// 서버에 데이터 저장 후 동기화
 async function save() {
   try {
     const res = await fetch('/api/data', {
@@ -125,7 +123,7 @@ function render(){
  $('products').innerHTML=visibleProducts.map(p=>`<div class="card stack">${p.image?`<img class="product-image-large" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-image-large" style="display:grid;place-items:center;font-size:36px">🛍️</div>'}<div class="row"><span class="pill">${esc(p.category)}</span><span class="muted small">재고 ${p.stock}개</span></div><div><h3>${esc(p.name)}</h3><div class="price">${money(p.price)}</div></div><button ${!st||p.stock<1||st.balance<p.price?'disabled':''} onclick="buy('${p.id}')">${p.stock<1?'품절':!st?'학생 선택':st.balance<p.price?'포인트 부족':'구매하기'}</button></div>`).join('')||'<div class="empty">등록된 상품이 없습니다.</div>';
  const reqs=data.requests.filter(r=>(r.studentId===currentStudent || r.student_id===currentStudent));
  $('myRequests').innerHTML=st?(reqs.length?reqs.map(r=>`<div class="listitem"><div class="row"><b>${won(r.amount)}</b><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div><div class="muted small">${r.time}</div></div>`).join(''):'아직 충전 신청이 없습니다.'):'학생을 선택하면 내역이 표시됩니다.';
- $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name===l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
+ $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
  
  if (admin) {
     $('adminLogin').classList.add('hidden');
@@ -164,37 +162,25 @@ function renderAdmin(){
  $('studentAdminList').innerHTML=sortedStudents(data.students).map(s=>`<div class="listitem"><div class="row mobile-col"><div><b>${s.grade?`${s.grade}학년 · `:'학년 미설정 · '}${esc(s.name)}</b><div class="muted small">잔액 ${money(s.balance)} · ${s.active?'사용 중':'비활성화'}</div></div><div class="row"><button class="secondary" onclick="editStudent('${s.id}')">수정</button><button class="${s.active?'danger':'secondary'}" onclick="toggleStudent('${s.id}')">${s.active?'비활성화':'활성화'}</button><button class="danger" onclick="deleteStudent('${s.id}')">학생 삭제</button></div></div></div>`).join('')||'<div class="empty">학생이 없습니다.</div>';
  $('inventoryList').innerHTML=[...data.products].sort((a,b)=>categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category)||Number(b.price)-Number(a.price)||a.name.localeCompare(b.name,'ko')).map(p=>`<div class="listitem"><div class="row mobile-col"><div class="product-info">${p.image?`<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}<div><b>${esc(p.name)}</b> <span class="pill">${esc(p.category)}</span><div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active?'판매 중':'판매 중단'}</div></div></div><div class="row"><button class="secondary" onclick="editProduct('${p.id}')">수정</button><button class="secondary" onclick="restock('${p.id}')">재고 추가</button><button class="ghost" onclick="toggleProduct('${p.id}')">${p.active?'판매 중단':'판매 재개'}</button><button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button></div></div></div>`).join('')||'<div class="empty">상품이 없습니다.</div>';
  
- // 충전 신청 목록 렌더링
  $('topupAdminList').innerHTML=data.requests.map(r=>{
    const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 학생';
    return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div>${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}</div></div>`;
  }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
- // 1. 충전 승인 대기 건수 계산
-const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
 
-// 2. 품절 상품 개수 계산 (판매 중이면서 재고가 0개 이하인 상품)
-const soldOutCount = data.products.filter(p => p.active && Number(p.stock) < 1).length;
-
-// 3. [충전 승인] 탭 뱃지 업데이트
-const topupBadge = $('topupBadge');
-if (topupBadge) {
-  topupBadge.textContent = pendingCount;
-  topupBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
-}
-
-// 4. [상품·재고] 탭 뱃지 업데이트
-const inventoryBadge = $('inventoryBadge');
-if (inventoryBadge) {
-  inventoryBadge.textContent = soldOutCount;
-  inventoryBadge.style.display = soldOutCount > 0 ? 'inline-block' : 'none';
-}
-
- // 충전 승인 탭 뱃지 업데이트
+ // 충전 승인 대기 건수 및 품절 상품 개수 계산 및 뱃지 업데이트
  const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
- const badge = $('topupBadge');
- if (badge) {
-   badge.textContent = pendingCount;
-   badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+ const soldOutCount = data.products.filter(p => p.active && Number(p.stock) < 1).length;
+
+ const topupBadge = $('topupBadge');
+ if (topupBadge) {
+   topupBadge.textContent = pendingCount;
+   topupBadge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+ }
+
+ const inventoryBadge = $('inventoryBadge');
+ if (inventoryBadge) {
+   inventoryBadge.textContent = soldOutCount;
+   inventoryBadge.style.display = soldOutCount > 0 ? 'inline-block' : 'none';
  }
 
  const sales=data.ledger.filter(l=>l.type==='판매');$('ledgerIncomeTotal').textContent=money(sales.reduce((sum,l)=>sum+Number(l.amount||0),0));const todayPrefix=new Date().toLocaleDateString('ko-KR');const daily=sales.filter(l=>l.timestamp?new Date(l.timestamp).toDateString()===new Date().toDateString():String(l.time||'').startsWith(todayPrefix)).reduce((sum,l)=>sum+Number(l.amount||0),0);$('ledgerDailyIncome').textContent='오늘 '+money(daily);$('ledgerCount').textContent=data.ledger.length+'건';
@@ -251,7 +237,6 @@ $('productCategoryFilter').onchange=render;$('productSort').onchange=render;
 $('requestTopup').onclick=requestTopup;
 $('resetStudent').onclick=()=>{currentStudent='';$('topupFeedback').innerHTML='';render();showPage('student')};
 
-// 관리자 로그인
 $('adminLoginBtn').onclick=()=>{
   if($('adminPassword').value==='1123'){
     admin=true;
@@ -267,7 +252,6 @@ $('adminLoginBtn').onclick=()=>{
 };
 $('adminPassword').onkeydown=e=>{if(e.key==='Enter')$('adminLoginBtn').click()};
 
-// 관리자 로그아웃
 $('logoutBtn').onclick=()=>{
   admin=false;
   sessionStorage.removeItem('school_admin_auth');
@@ -297,10 +281,7 @@ function readProductImage(file){return new Promise((resolve,reject)=>{if(!file){
 $('addProduct').onclick=async()=>{const name=$('newProductName').value.trim(),category=$('newProductCategory').value,price=Number($('newProductPrice').value),stock=Number($('newProductStock').value),file=$('newProductImage').files[0];if(!name||!Number.isInteger(price)||price<0||!Number.isInteger(stock)||stock<0){alert('상품명, 가격, 재고를 확인해 주세요.');return}try{const image=await readProductImage(file);data.products.push({id:'p'+Date.now(),name,category,price,stock,image,active:true});$('newProductName').value='';$('newProductImage').value='';save()}catch(err){alert(err.message||'사진을 처리하지 못했습니다.')}};
 $('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($('fundInput').value);if(!Number.isInteger(goal)||goal<1||!Number.isInteger(fund)||fund<0){alert('기금 목표와 금액을 확인해 주세요.');return}data.goal=goal;data.fund=fund;save();alert('기금 설정을 저장했습니다.')};
 
-// 화면이 포커스되거나 다시 켜질 때 자동 새로고침
 window.addEventListener('focus', () => { loadData(); });
-
-// 최초 실행 시 서버 데이터 로드
 loadData();
 </script>
 </body>
