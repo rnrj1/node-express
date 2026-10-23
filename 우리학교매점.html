@@ -251,7 +251,12 @@ function restock(id){const p=data.products.find(x=>x.id===id),n=Number(prompt('�
 function toggleProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;p.active=!p.active;save()}
 function deleteProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;if(!confirm(`상품 ‘${p.name}’을 목록에서 완전히 삭제할까요?\n과거 장부 기록은 보존됩니다.`))return;data.products=data.products.filter(x=>x.id!==id);save()}
 function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(id));if(!entry)return;if(!confirm(`장부 기록 ‘${entry.type} · ${entry.detail}’을 삭제할까요?\n학생 포인트, 재고, 기금은 변경되지 않습니다.`))return;data.ledger=data.ledger.filter(l=>String(l.id)!==String(id));save()}
-
+function deleteTopup(id){
+  if(!confirm('이 충전 신청 기록을 삭제할까요?')) return;
+  data.requests = data.requests.filter(r => String(r.id) !== String(id));
+  save();
+}
+  
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
 function showPage(page){
   document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
