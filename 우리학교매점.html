@@ -44,7 +44,13 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
   <div id="adminLogin" class="card stack" style="max-width:480px;margin:auto"><h2 style="margin:0">관리자 로그인</h2><div class="muted small">비밀번호 분실 시 <b>12학년 이민찬</b>에게 문의해주세요.</div><div class="field"><label for="adminPassword">관리자 비밀번호</label><input id="adminPassword" type="password" placeholder="비밀번호 입력"></div><button id="adminLoginBtn">로그인</button><div id="loginError" class="muted small"></div></div>
   <div id="adminPanel" class="hidden">
     <div class="row mobile-col"><div><h2 style="margin:0">관리자 대시보드</h2><div class="muted small">학생 · 상품 · 충전 · 장부를 관리합니다.</div></div><button class="ghost" id="logoutBtn">로그아웃</button></div>
-    <div class="tabs" id="adminTabs"><button class="active" data-admin="students">학생 관리</button><button data-admin="inventory">상품·재고</button><button data-admin="topups">충전 승인 <span id="topupBadge" class="pill wait" style="display:none; margin-left:4px; padding:2px 6px;">0</span></button><button data-admin="ledger">장부</button><button data-admin="settings">기금 설정</button></div>
+    <div class="tabs" id="adminTabs">
+      <button class="active" data-admin="students">학생 관리</button>
+      <button data-admin="inventory">상품·재고</button>
+      <button data-admin="topups">충전 승인 <span id="topupBadge" class="pill wait" style="display:none; margin-left:4px; padding:2px 6px;">0</span></button>
+      <button data-admin="ledger">장부</button>
+      <button data-admin="settings">기금 설정</button>
+    </div>
     <div id="adminStudents" class="adminSub">
       <div class="card stack" style="margin-bottom:14px"><h3>학생 프로필 추가</h3><div class="formgrid"><div class="field"><label>학년</label><select id="newStudentGrade"><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option><option value="7">7학년</option><option value="8">8학년</option><option value="9">9학년</option><option value="10">10학년</option><option value="11">11학년</option><option value="12">12학년</option></select></div><div class="field"><label>학생 이름</label><input id="newStudentName" placeholder="예: 김민수"></div><div class="field"><label>식별 코드 (선택)</label><input id="newStudentCode" placeholder="필요 없으면 비워 두세요"></div></div><button id="addStudent">학생 추가</button></div><div class="card"><h3>등록된 학생</h3><div id="studentAdminList"></div></div>
     </div>
@@ -56,10 +62,12 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
     <div id="adminSettings" class="adminSub hidden"><div class="card stack"><h3>학교 기금 설정</h3><div class="field"><label>모금 목표 (포인트)</label><input id="goalInput" type="number" min="1"></div><div class="field"><label>현재 기금 (포인트)</label><input id="fundInput" type="number" min="0"></div><button id="saveFund">기금 설정 저장</button><div class="muted small">실제 현금과 기금 잔액은 담당자가 별도로 대조해야 합니다.</div></div></div>
   </div>
 </section>
-</main><footer>학교 매점 데모 · 온라인 DB 연동 완료</footer>
+</main><footer>학교 매점 키오스크 · 온라인 DB 연결 중</footer>
 <script>
 let data = {students:[], products:[], requests:[], ledger:[], goal:100000, fund:0};
-let currentStudent='', admin=false;
+let currentStudent='';
+let admin = sessionStorage.getItem('school_admin_auth') === 'true'; // 새로고침 시 로그인 상태 유지
+
 const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -78,15 +86,13 @@ async function loadData() {
       
       data.products.forEach(p=>{if(p.category==='간식')p.category='과자';else if(p.category==='문구류')p.category='기타';if(!categoryOrder.includes(p.category))p.category='기타';if(typeof p.image!=='string')p.image='';});
       render();
-    } else {
-      alert('데이터를 불러오지 못했습니다.');
     }
   } catch (e) {
     console.error('Failed to load data:', e);
   }
 }
 
-// 서버에 데이터 저장하기
+// 서버에 데이터 저장 후 동기화
 async function save() {
   try {
     const res = await fetch('/api/data', {
@@ -95,7 +101,6 @@ async function save() {
       body: JSON.stringify(data)
     });
     if (res.ok) {
-      // 저장 성공 직후 최신 데이터를 다시 불러와서 화면 동기화
       await loadData();
     } else {
       alert('서버 저장 중 오류가 발생했습니다.');
@@ -118,31 +123,38 @@ function render(){
  $('studentSummary').innerHTML=st?`<div class="row"><span>${esc(st.name)}님의 포인트</span><b style="font-size:22px">${money(st.balance)}</b></div>`:'';
  const chosenCategory=$('productCategoryFilter').value,sortMode=$('productSort').value;let visibleProducts=data.products.filter(p=>p.active&&(chosenCategory==='all'||p.category===chosenCategory));visibleProducts.sort((a,b)=>{const cat=categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category);if(sortMode==='category-desc')return cat||Number(b.price)-Number(a.price)||a.name.localeCompare(b.name,'ko');if(sortMode==='category-asc')return cat||Number(a.price)-Number(b.price)||a.name.localeCompare(b.name,'ko');if(sortMode==='price-desc')return Number(b.price)-Number(a.price)||cat||a.name.localeCompare(b.name,'ko');return Number(a.price)-Number(b.price)||cat||a.name.localeCompare(b.name,'ko')});
  $('products').innerHTML=visibleProducts.map(p=>`<div class="card stack">${p.image?`<img class="product-image-large" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-image-large" style="display:grid;place-items:center;font-size:36px">🛍️</div>'}<div class="row"><span class="pill">${esc(p.category)}</span><span class="muted small">재고 ${p.stock}개</span></div><div><h3>${esc(p.name)}</h3><div class="price">${money(p.price)}</div></div><button ${!st||p.stock<1||st.balance<p.price?'disabled':''} onclick="buy('${p.id}')">${p.stock<1?'품절':!st?'학생 선택':st.balance<p.price?'포인트 부족':'구매하기'}</button></div>`).join('')||'<div class="empty">등록된 상품이 없습니다.</div>';
- const reqs=data.requests.filter(r=>r.studentId===currentStudent);
+ const reqs=data.requests.filter(r=>(r.studentId===currentStudent || r.student_id===currentStudent));
  $('myRequests').innerHTML=st?(reqs.length?reqs.map(r=>`<div class="listitem"><div class="row"><b>${won(r.amount)}</b><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div><div class="muted small">${r.time}</div></div>`).join(''):'아직 충전 신청이 없습니다.'):'학생을 선택하면 내역이 표시됩니다.';
- $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
- renderAdmin();
+ $('fundGoalText').textContent=money(data.goal);$('fundCurrentText').textContent=money(data.fund);const overallPct=data.goal?Math.min(100,data.fund/data.goal*100):0;$('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';$('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';const groupTotals={'초등':0,'중':0,'고등':0};data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name===l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});$('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
+ 
+ if (admin) {
+    $('adminLogin').classList.add('hidden');
+    $('adminPanel').classList.remove('hidden');
+    $('adminTab').classList.remove('hidden');
+    renderAdmin();
+ }
 }
 
 function buy(id){const st=data.students.find(s=>s.id===currentStudent),p=data.products.find(p=>p.id===id);if(!st||!p||!p.active||p.stock<1||st.balance<p.price)return;if(!confirm(`${p.name}을(를) ${money(p.price)}에 구매할까요?`))return;st.balance-=p.price;p.stock--;addLedger('판매',p.name+' 구매',p.price,st.name,st.id);data.fund+=p.price;save();alert('구매 완료! 남은 포인트: '+money(st.balance))}
+
 function requestTopup(){
   const st=data.students.find(s=>s.id===currentStudent);
   if(!st){alert('먼저 학생 이름을 선택해 주세요.');return}
   const amount=Number($('topupAmount').value);
   if(!Number.isSafeInteger(amount)||amount<1){alert('충전 금액은 1,000원 이상의 정수로 입력해 주세요.');return}
   if(!confirm(`${st.name} 이름으로 ${won(amount)} 충전을 신청할까요? 실제 현금을 관리자에게 전달한 뒤 승인받아 주세요.`))return;
-
+  
   data.requests.unshift({
     id:'r'+Date.now(),
     studentId: st.id,
-    student_id: st.id,       // 서버 호환용 추가
+    student_id: st.id,
     studentName: st.name,
-    student_name: st.name,   // 서버 호환용 추가
+    student_name: st.name,
     amount,
     status:'승인 대기',
     time: new Date().toLocaleString('ko-KR')
   });
-
+  
   $('topupFeedback').innerHTML='<div class="success">신청이 등록됐어요. 관리자 확인 후 포인트가 지급됩니다.</div>';
   save();
 }
@@ -151,81 +163,126 @@ function renderAdmin(){
  if(!admin)return;
  $('studentAdminList').innerHTML=sortedStudents(data.students).map(s=>`<div class="listitem"><div class="row mobile-col"><div><b>${s.grade?`${s.grade}학년 · `:'학년 미설정 · '}${esc(s.name)}</b><div class="muted small">잔액 ${money(s.balance)} · ${s.active?'사용 중':'비활성화'}</div></div><div class="row"><button class="secondary" onclick="editStudent('${s.id}')">수정</button><button class="${s.active?'danger':'secondary'}" onclick="toggleStudent('${s.id}')">${s.active?'비활성화':'활성화'}</button><button class="danger" onclick="deleteStudent('${s.id}')">학생 삭제</button></div></div></div>`).join('')||'<div class="empty">학생이 없습니다.</div>';
  $('inventoryList').innerHTML=[...data.products].sort((a,b)=>categoryOrder.indexOf(a.category)-categoryOrder.indexOf(b.category)||Number(b.price)-Number(a.price)||a.name.localeCompare(b.name,'ko')).map(p=>`<div class="listitem"><div class="row mobile-col"><div class="product-info">${p.image?`<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}<div><b>${esc(p.name)}</b> <span class="pill">${esc(p.category)}</span><div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active?'판매 중':'판매 중단'}</div></div></div><div class="row"><button class="secondary" onclick="editProduct('${p.id}')">수정</button><button class="secondary" onclick="restock('${p.id}')">재고 추가</button><button class="ghost" onclick="toggleProduct('${p.id}')">${p.active?'판매 중단':'판매 재개'}</button><button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button></div></div></div>`).join('')||'<div class="empty">상품이 없습니다.</div>';
- $('topupAdminList').innerHTML = data.requests.map(r => {
-  // studentName이나 student_name 중 무엇이 들어와도 확실하게 이름을 찾도록 수정
-  const displayName = r.studentName || r.student_name || '알 수 없는 학생';
-  return `<div class="listitem">
-    <div class="row mobile-col">
-      <div>
-        <b>${esc(displayName)}</b> · ${won(r.amount)}
-        <div class="muted small">${r.time}</div>
-        <span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span>
-      </div>
-      ${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}
-    </div>
-  </div>`;
-}).join('') || '<div class="empty">충전 신청이 없습니다.</div>';
+ 
+ // 충전 신청 목록 렌더링
+ $('topupAdminList').innerHTML=data.requests.map(r=>{
+   const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 학생';
+   return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div>${r.status==='승인 대기'?`<div class="row"><button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button></div>`:''}</div></div>`;
+ }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
+
+ // 충전 승인 탭 뱃지 업데이트
+ const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
+ const badge = $('topupBadge');
+ if (badge) {
+   badge.textContent = pendingCount;
+   badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+ }
+
  const sales=data.ledger.filter(l=>l.type==='판매');$('ledgerIncomeTotal').textContent=money(sales.reduce((sum,l)=>sum+Number(l.amount||0),0));const todayPrefix=new Date().toLocaleDateString('ko-KR');const daily=sales.filter(l=>l.timestamp?new Date(l.timestamp).toDateString()===new Date().toDateString():String(l.time||'').startsWith(todayPrefix)).reduce((sum,l)=>sum+Number(l.amount||0),0);$('ledgerDailyIncome').textContent='오늘 '+money(daily);$('ledgerCount').textContent=data.ledger.length+'건';
  $('ledgerList').innerHTML=data.ledger.map(l=>`<div class="listitem"><div class="row mobile-col"><div><b>${esc(l.type)} · ${esc(l.detail)}</b><b>${money(l.amount)}</b><div class="muted small">${esc(l.student||'')} · ${esc(l.time)}</div></div><button class="danger" onclick="deleteLedger('${l.id}')">이 기록 삭제</button></div></div>`).join('')||'<div class="empty">기록이 없습니다.</div>';
  $('goalInput').value=data.goal;$('fundInput').value=data.fund;
- // 승인 대기 중인 신청 건수 계산
-const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
-const badge = $('topupBadge');
-if (badge) {
-  badge.textContent = pendingCount;
-  badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
-}
 }
 
-function editStudent(id) {
-    const s = data.students.find(x => x.id === id);
-    if (!s) return;
-    const gradeText = prompt('학년을 입력해 주세요 (1~12)', s.grade || '');
-    if (gradeText === null) return;
-    const grade = Number(gradeText);
-    if (!Number.isInteger(grade) || grade < 1 || grade > 12) { alert('학년은 1부터 12 사이의 정수로 입력해 주세요.'); return; }
-    const name = prompt('학생 이름', s.name);
-    if (name === null) return;
-    if (!name.trim()) { alert('학생 이름을 입력해 주세요.'); return; }
-    const balanceText = prompt('학생 잔액을 입력해 주세요 (포인트)', String(s.balance));
-    if (balanceText === null) return;
-    const balance = Number(balanceText);
-    if (!Number.isSafeInteger(balance) || balance < 0) { alert('잔액은 0 이상의 정수로 입력해 주세요.'); return; }
-    const oldName = s.name;
-    s.grade = grade; s.name = name.trim(); s.balance = balance;
-    data.ledger.forEach(l => { if (l.studentId === id || (!l.studentId && l.student === oldName)) { l.studentId = id; l.grade = grade; l.student = s.name; } });
-    data.requests.filter(r => r.studentId === id && r.status === '승인 대기').forEach(r => { r.studentName = s.name; });
-    save();
+function approve(id){
+  const r = data.requests.find(x => x.id === id);
+  if(!r || r.status !== '승인 대기') return;
+
+  const displayName = r.studentName || r.student_name || '학생';
+  const s = data.students.find(x => x.id === r.studentId || x.id === r.student_id || x.name === displayName);
+
+  if(!s){
+    alert('해당 학생의 프로필을 찾을 수 없습니다.');
+    return;
+  }
+
+  if(!confirm(`${s.name} 학생에게 ${won(r.amount)} 현금을 실제로 받았나요? 확인 후 승인하면 포인트가 지급됩니다.`)) return;
+
+  s.balance += r.amount;
+  r.status = '승인 완료';
+  r.approvedAt = new Date().toLocaleString('ko-KR');
+  
+  addLedger('충전', `현금 충전 승인`, r.amount, s.name, s.id);
+  save();
 }
+
+function reject(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(confirm('이 충전 신청을 거절할까요?')){r.status='거절';save()}}
+function editStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;const gradeText=prompt('학년을 입력해 주세요 (1~12)',s.grade||'');if(gradeText===null)return;const grade=Number(gradeText);if(!Number.isInteger(grade)||grade<1||grade>12){alert('학년은 1부터 12 사이의 정수로 입력해 주세요.');return}const name=prompt('학생 이름',s.name);if(name===null)return;if(!name.trim()){alert('학생 이름을 입력해 주세요.');return}const balanceText=prompt('학생 잔액을 입력해 주세요 (포인트)',String(s.balance));if(balanceText===null)return;const balance=Number(balanceText);if(!Number.isSafeInteger(balance)||balance<0){alert('잔액은 0 이상의 정수로 입력해 주세요.');return}const oldName=s.name;s.grade=grade;s.name=name.trim();s.balance=balance;data.ledger.forEach(l=>{if(l.studentId===id||(!l.studentId&&l.student===oldName)){l.studentId=id;l.grade=grade;l.student=s.name}});data.requests.filter(r=>(r.studentId===id||r.student_id===id)&&r.status==='승인 대기').forEach(r=>{r.studentName=s.name;r.student_name=s.name;});save()}
 function toggleStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;s.active=!s.active;save()}
-function deleteStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;const pending=data.requests.some(r=>r.studentId===id&&r.status==='승인 대기');const msg=`${s.grade?s.grade+'학년 ':''}${s.name} 학생을 완전히 삭제할까요?\n잔액 ${money(s.balance)}과 이 학생의 프로필이 삭제됩니다. 과거 장부 기록은 보존됩니다.${pending?'\n이 학생의 대기 중 충전 신청도 함께 삭제됩니다.':''}`;if(!confirm(msg))return;data.students=data.students.filter(x=>x.id!==id);data.requests=data.requests.filter(r=>!(r.studentId===id&&r.status==='승인 대기'));if(currentStudent===id)currentStudent='';save()}
+function deleteStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;const pending=data.requests.some(r=>(r.studentId===id||r.student_id===id)&&r.status==='승인 대기');const msg=`${s.grade?s.grade+'학년 ':''}${s.name} 학생을 완전히 삭제할까요?\n잔액 ${money(s.balance)}과 이 학생의 프로필이 삭제됩니다. 과거 장부 기록은 보존됩니다.${pending?'\n이 학생의 대기 중 충전 신청도 함께 삭제됩니다.':''}`;if(!confirm(msg))return;data.students=data.students.filter(x=>x.id!==id);data.requests=data.requests.filter(r=>!((r.studentId===id||r.student_id===id)&&r.status==='승인 대기'));if(currentStudent===id)currentStudent='';save()}
 function editProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;const name=prompt('상품 이름',p.name);if(name===null)return;const price=prompt('판매 가격 (포인트)',p.price);if(price===null)return;const stock=prompt('상품 재고',p.stock);if(stock===null)return;const n=Number(price);if(!name.trim()||!Number.isInteger(n)||n<0){alert('이름과 가격을 확인해 주세요.');return}const category=prompt('카테고리 입력: 과자 / 음료 / 젤리&초콜릿 / 면류 / 기타',p.category);if(category===null)return;if(!categoryOrder.includes(category.trim())){alert('목록에 있는 카테고리 중 하나를 입력해 주세요.');return}p.name=name.trim();p.price=n;p.category=category.trim();p.stock=stock.trim();save()}
-function restock(id){const p=data.products.find(x=>x.id===id),n=Number(prompt('추가할 재고 수량', '10'));if(!Number.isInteger(n)||n<=0){alert('1개 이상의 정수를 입력해 주세요.');return}p.stock+=n;addLedger('입고',p.name+' 재고 '+n+'개 추가',0);save()}
+function restock(id){const p=data.products.find(x=>x.id===id),n=Number(prompt('추가할 재고 수량','10'));if(!Number.isInteger(n)||n<=0){alert('1개 이상의 정수를 입력해 주세요.');return}p.stock+=n;addLedger('입고',p.name+' 재고 '+n+'개 추가',0);save()}
 function toggleProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;p.active=!p.active;save()}
 function deleteProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;if(!confirm(`상품 ‘${p.name}’을 목록에서 완전히 삭제할까요?\n과거 장부 기록은 보존됩니다.`))return;data.products=data.products.filter(x=>x.id!==id);save()}
-function approve(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(!confirm(`${r.studentName} 학생에게 ${won(r.amount)} 현금을 실제로 받았나요? 확인 후 승인하면 포인트가 지급됩니다.`))return;const s=data.students.find(x=>x.id===r.studentId);if(!s){alert('학생 프로필을 찾을 수 없습니다.');return}s.balance+=r.amount;r.status='승인 완료';r.approvedAt=new Date().toLocaleString('ko-KR');addLedger('충전',`현금 충전 승인`,r.amount,s.name,s.id);save()}
-function reject(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(confirm('이 충전 신청을 거절할까요?')){r.status='거절';save()}}
 function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(id));if(!entry)return;if(!confirm(`장부 기록 ‘${entry.type} · ${entry.detail}’을 삭제할까요?\n학생 포인트, 재고, 기금은 변경되지 않습니다.`))return;data.ledger=data.ledger.filter(l=>String(l.id)!==String(id));save()}
 
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
-function showPage(page){document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));['student','fund','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));if(page==='admin'&&!admin)$('adminPassword').focus()}
+function showPage(page){
+  document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  ['student','fund','admin'].forEach(p=>$(p+'Page').classList.toggle('hidden',p!==page));
+  if(page==='admin'){
+    loadData();
+    if(!admin) $('adminPassword').focus();
+  }
+}
 
-$('adminToggle').onclick = async () => { await loadData(); showPage('admin'); };
-$('adminTab').onclick = async () => { await loadData(); showPage('admin'); };
+$('adminToggle').onclick=async()=>{ await loadData(); showPage('admin'); };
+$('adminTab').onclick=async()=>{ await loadData(); showPage('admin'); };
 $('studentSelect').onchange=e=>{currentStudent=e.target.value;$('topupFeedback').innerHTML='';render()};
 $('productCategoryFilter').onchange=render;$('productSort').onchange=render;
 $('requestTopup').onclick=requestTopup;
 $('resetStudent').onclick=()=>{currentStudent='';$('topupFeedback').innerHTML='';render();showPage('student')};
-$('adminLoginBtn').onclick=()=>{if($('adminPassword').value==='1123'){admin=true;$('adminLogin').classList.add('hidden');$('adminPanel').classList.remove('hidden');$('adminTab').classList.remove('hidden');$('loginError').textContent='';renderAdmin()}else $('loginError').textContent='비밀번호가 올바르지 않습니다.'};
+
+// 관리자 로그인
+$('adminLoginBtn').onclick=()=>{
+  if($('adminPassword').value==='1123'){
+    admin=true;
+    sessionStorage.setItem('school_admin_auth', 'true');
+    $('adminLogin').classList.add('hidden');
+    $('adminPanel').classList.remove('hidden');
+    $('adminTab').classList.remove('hidden');
+    $('loginError').textContent='';
+    renderAdmin();
+  } else {
+    $('loginError').textContent='비밀번호가 올바르지 않습니다.';
+  }
+};
 $('adminPassword').onkeydown=e=>{if(e.key==='Enter')$('adminLoginBtn').click()};
-$('logoutBtn').onclick=()=>{admin=false;$('adminLogin').classList.remove('hidden');$('adminPanel').classList.add('hidden');$('adminTab').classList.add('hidden');$('adminPassword').value='';showPage('student')};
-document.querySelectorAll('[data-admin]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-admin]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.adminSub').forEach(x=>x.classList.add('hidden'));$('admin'+b.dataset.admin[0].toUpperCase()+b.dataset.admin.slice(1)).classList.remove('hidden')});
-$('addStudent').onclick=()=>{const grade=Number($('newStudentGrade').value),name=$('newStudentName').value.trim(),code=$('newStudentCode').value.trim();if(!name){alert('학생 이름을 입력해 주세요.');return}if(data.students.some(s=>s.active&&Number(s.grade)===grade&&s.name===name)){alert('같은 학년과 이름의 학생이 이미 있습니다.');return}data.students.push({id:'s'+Date.now(),grade,name,code,balance:0,active:true});$('newStudentName').value='';$('newStudentCode').value='';save()};
+
+// 관리자 로그아웃
+$('logoutBtn').onclick=()=>{
+  admin=false;
+  sessionStorage.removeItem('school_admin_auth');
+  $('adminLogin').classList.remove('hidden');
+  $('adminPanel').classList.add('hidden');
+  $('adminTab').classList.add('hidden');
+  $('adminPassword').value='';
+  showPage('student');
+};
+
+document.querySelectorAll('[data-admin]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-admin]').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('.adminSub').forEach(x=>x.classList.add('hidden'));
+  $('admin'+b.dataset.admin[0].toUpperCase()+b.dataset.admin.slice(1)).classList.remove('hidden');
+});
+
+$('addStudent').onclick=()=>{
+  const grade=Number($('newStudentGrade').value),name=$('newStudentName').value.trim(),code=$('newStudentCode').value.trim();
+  if(!name){alert('학생 이름을 입력해 주세요.');return}
+  if(data.students.some(s=>s.active&&Number(s.grade)===grade&&s.name===name)){alert('같은 학년과 이름의 학생이 이미 있습니다.');return}
+  data.students.push({id:'s'+Date.now(),grade,name,code,balance:0,active:true});
+  $('newStudentName').value='';$('newStudentCode').value='';
+  save();
+};
+
 function readProductImage(file){return new Promise((resolve,reject)=>{if(!file){resolve('');return}if(!file.type.startsWith('image/')){reject(new Error('이미지 파일을 선택해 주세요.'));return}const reader=new FileReader();reader.onerror=()=>reject(new Error('사진을 읽지 못했습니다.'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('사진 파일을 열 수 없습니다.'));img.onload=()=>{const max=420,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.72))};img.src=reader.result};reader.readAsDataURL(file)})}
 $('addProduct').onclick=async()=>{const name=$('newProductName').value.trim(),category=$('newProductCategory').value,price=Number($('newProductPrice').value),stock=Number($('newProductStock').value),file=$('newProductImage').files[0];if(!name||!Number.isInteger(price)||price<0||!Number.isInteger(stock)||stock<0){alert('상품명, 가격, 재고를 확인해 주세요.');return}try{const image=await readProductImage(file);data.products.push({id:'p'+Date.now(),name,category,price,stock,image,active:true});$('newProductName').value='';$('newProductImage').value='';save()}catch(err){alert(err.message||'사진을 처리하지 못했습니다.')}};
 $('saveFund').onclick=()=>{const goal=Number($('goalInput').value),fund=Number($('fundInput').value);if(!Number.isInteger(goal)||goal<1||!Number.isInteger(fund)||fund<0){alert('기금 목표와 금액을 확인해 주세요.');return}data.goal=goal;data.fund=fund;save();alert('기금 설정을 저장했습니다.')};
 
-// 앱 실행 시 최초 데이터 로드
+// 화면이 포커스되거나 다시 켜질 때 자동 새로고침
+window.addEventListener('focus', () => { loadData(); });
+
+// 최초 실행 시 서버 데이터 로드
 loadData();
 </script>
-</body></html>
+</body>
+</html>
