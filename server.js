@@ -23,7 +23,7 @@ const pool = new Pool({
     : undefined
 });
 
-// 1. 서버 시작 시 DB 테이블 및 샘플 데이터 초기화 함수
+// 1. 서버 시작 시 DB 테이블만 안전하게 생성하는 초기화 함수 (샘플 데이터 제거됨)
 async function initDatabase() {
   try {
     await pool.query(`
@@ -74,30 +74,18 @@ async function initDatabase() {
 
       INSERT INTO settings (key, value) VALUES ('goal', 100000), ('fund', 0)
       ON CONFLICT (key) DO NOTHING;
-
-      INSERT INTO students (id, name, grade, code, balance, active) VALUES 
-      ('s1', '학생 A', 1, '', 3000, TRUE),
-      ('s2', '학생 B', 2, '', 1500, TRUE),
-      ('s3', '학생 C', 3, '', 0, TRUE)
-      ON CONFLICT (id) DO NOTHING;
-
-      INSERT INTO products (id, name, category, price, stock, image, active) VALUES 
-      ('p1', '초코 과자', '과자', 1000, 8, '', TRUE),
-      ('p2', '주스', '음료', 1500, 5, '', TRUE),
-      ('p3', '연필', '기타', 500, 12, '', TRUE)
-      ON CONFLICT (id) DO NOTHING;
     `);
-    console.log("🚀 데이터베이스 테이블 및 샘플 데이터 초기화 완료!");
+    console.log("🚀 데이터베이스 테이블 초기화 완료!");
   } catch (err) {
     console.error("❌ 데이터베이스 초기화 실패:", err.message);
   }
 }
 
 // -------------------------------------------------------------
-// 📌 2단계: 백엔드 API 라우터 추가
+// 📌 백엔드 API 라우터
 // -------------------------------------------------------------
 
-// ① 전체 데이터 가져오기 API (프론트엔드가 켜질 때 호출)
+// ① 전체 데이터 가져오기 API
 app.get("/api/data", async (req, res) => {
   try {
     const studentsRes = await pool.query("SELECT * FROM students");
@@ -127,7 +115,7 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
-// 전체 데이터 동기화/저장 API (상품 및 이미지 저장 오류 방지 버전)
+// 전체 데이터 동기화/저장 API
 app.post("/api/data", async (req, res) => {
   const client = await pool.connect();
   try {
@@ -145,7 +133,7 @@ app.post("/api/data", async (req, res) => {
       }
     }
 
-    // products 갱신 (이미지 문자열 및 데이터 타입 오류 방지)
+    // products 갱신
     await client.query("DELETE FROM products");
     if (products && Array.isArray(products)) {
       for (const p of products) {
@@ -203,7 +191,6 @@ app.post("/api/data", async (req, res) => {
   }
 });
 
-// 기존 헬스체크 API
 app.get("/api/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
