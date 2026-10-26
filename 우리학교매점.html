@@ -47,8 +47,8 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
 </section>
 <section id="vipPage" class="hidden">
   <div class="card stack" style="margin-bottom:16px">
-    <h2 style="margin:0">🌟 이번 주 VIP 전당 (Top 5)</h2>
-    <div class="muted small">매주 월요일 00:00에 갱신됩니다. 지난 한 주 동안 매점을 가장 많이 이용해 주신 분들께 이번 주 한 주 동안 <b>[VIP]</b> 타이틀이 부여됩니다!</div>
+    <h2 style="margin:0">🌟 이번 주 실시간 VIP 랭킹 (Top 5)</h2>
+    <div class="muted small">이번 주 월요일부터 일요일까지의 구매 실적을 실시간으로 집계합니다. 이번 주 1위에게는 다음 주 월요일부터 <b>[VIP]</b> 타이틀이 부여됩니다!</div>
     <div id="vipRankingList" style="margin-top:10px"></div>
   </div>
 </section>
@@ -157,7 +157,7 @@ function getTimeRanges() {
   const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
   const startOfWeek = new Date(d.setDate(diffToMonday)).setHours(0,0,0,0);
 
-  // 지난주 시작 및 끝 (VIP 선정용)
+  // 지난주 시작 및 끝 (월요일이 되기 전까지는 지난주 1위에게 타이틀 부여)
   const startOfLastWeek = startOfWeek - 7 * 24 * 60 * 60 * 1000;
   const endOfLastWeek = startOfWeek - 1;
 
@@ -167,16 +167,16 @@ function getTimeRanges() {
 function render(){
   const ranges = getTimeRanges();
 
-  // 지난주 Top 5 학생 추출 (VIP 타이틀 부여용)
+  // 1. [VIP 타이틀 홀더 결정] 직전 주(지난주 월~일)의 1등 학생 ID 추출
   const lastWeekTotals = {};
   data.ledger.filter(l => l.type === '판매' && l.timestamp >= ranges.startOfLastWeek && l.timestamp <= ranges.endOfLastWeek).forEach(l => {
     const sId = l.studentId || l.student;
     if (!sId) return;
     lastWeekTotals[sId] = (lastWeekTotals[sId] || 0) + Number(l.amount || 0);
   });
-  const top5LastWeekIds = Object.entries(lastWeekTotals).sort((a,b) => b[1] - a[1]).slice(0, 5).map(item => item[0]);
+  const lastWeekTop1Id = Object.entries(lastWeekTotals).sort((a,b) => b[1] - a[1])[0]?.[0] || null;
 
-  // 학생 선택 드롭다운 렌더링 (VIP 타이틀 적용)
+  // 학생 선택 드롭다운 렌더링 (직전 주 1등에게 [VIP] 타이틀 부여)
   const activeStudents = sortedStudents(data.students.filter(s=>s.active));
   let studentOptions='<option value="">학생을 선택하세요</option>';
   let lastGradeGroup='';
@@ -187,7 +187,7 @@ function render(){
       studentOptions+=`<optgroup label="${group}">`;
       lastGradeGroup=group;
     }
-    const isVip = top5LastWeekIds.includes(s.id) || top5LastWeekIds.includes(s.name);
+    const isVip = (lastWeekTop1Id === s.id || lastWeekTop1Id === s.name);
     const displayName = isVip ? `⭐ [VIP] ${s.name}` : s.name;
     studentOptions+=`<option value="${s.id}">${esc(displayName)}</option>`;
   });
@@ -216,26 +216,26 @@ function render(){
   data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});
   $('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
   
-  // VIP 랭킹 페이지 렌더링
-  const lastWeekSalesByStudent = {};
-  data.ledger.filter(l => l.type === '판매' && l.timestamp >= ranges.startOfLastWeek && l.timestamp <= ranges.endOfLastWeek).forEach(l => {
+  // 2. [이번 주 실시간 VIP 랭킹 탭 (Top 5)] - 이번 주 월요일부터 현재까지의 실시간 집계
+  const currentWeekSalesByStudent = {};
+  data.ledger.filter(l => l.type === '판매' && l.timestamp >= ranges.startOfWeek).forEach(l => {
     const sId = l.studentId || l.student;
     if(!sId) return;
-    if(!lastWeekSalesByStudent[sId]) {
+    if(!currentWeekSalesByStudent[sId]) {
       const studentObj = data.students.find(s => s.id === sId || s.name === l.student);
-      lastWeekSalesByStudent[sId] = { name: studentObj?.name || l.student || '알 수 없는 학생', grade: studentObj?.grade || l.grade || '-', amount: 0 };
+      currentWeekSalesByStudent[sId] = { name: studentObj?.name || l.student || '알 수 없는 학생', grade: studentObj?.grade || l.grade || '-', amount: 0 };
     }
-    lastWeekSalesByStudent[sId].amount += Number(l.amount || 0);
+    currentWeekSalesByStudent[sId].amount += Number(l.amount || 0);
   });
-  const sortedVipList = Object.values(lastWeekSalesByStudent).sort((a,b) => b.amount - a.amount).slice(0, 5);
-  $('vipRankingList').innerHTML = sortedVipList.length ? sortedVipList.map((v, i) => `
+  const sortedCurrentVipList = Object.values(currentWeekSalesByStudent).sort((a,b) => b.amount - a.amount).slice(0, 5);
+  $('vipRankingList').innerHTML = sortedCurrentVipList.length ? sortedCurrentVipList.map((v, i) => `
     <div class="listitem">
       <div class="row">
-        <div><b>${i+1}위. ${esc(v.name)}</b> <span class="pill">${v.grade !== '-' ? v.grade + '학년' : ''}</span></div>
+        <div><b>${i+1}위.</b> ${esc(v.name)} <span class="pill">${v.grade !== '-' ? v.grade + '학년' : ''}</span> ${i === 0 ? '<span class="pill ok">👑 현재 1위 (차주 VIP 후보)</span>' : ''}</div>
         <div class="price" style="font-size:18px;">${money(v.amount)}</div>
       </div>
     </div>
-  `).join('') : '<div class="empty">지난주 구매 기록이 없습니다. 이번 주의 VIP가 되어보세요!</div>';
+  `).join('') : '<div class="empty">이번 주 실시간 구매 기록이 없습니다. 첫 번째 주인공이 되어보세요!</div>';
 
   if (admin) {
     $('adminLogin').classList.add('hidden');
@@ -283,10 +283,8 @@ function renderAdmin(){
    return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div><div class="row">${r.status==='승인 대기'?`<button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button>`:`<button class="danger" onclick="deleteTopup('${r.id}')">기록 삭제</button>`}</div></div></div>`;
  }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
 
- // 관리자 랭킹 탭 데이터 계산 (일간/주간 상품 랭킹 및 학생 누적 랭킹)
  const ranges = getTimeRanges();
  
- // 1. 상품 판매량 집계 함수
  const getProductRanking = (startTime) => {
    const counts = {};
    data.ledger.filter(l => l.type === '판매' && (!startTime || l.timestamp >= startTime)).forEach(l => {
@@ -308,7 +306,6 @@ function renderAdmin(){
    <div class="listitem" style="padding:8px 0;"><div class="row"><span><b>${idx+1}위.</b> ${esc(item[0])}</span><span class="pill">${item[1]}회 판매</span></div></div>
  `).join('') : '<div class="empty" style="padding:15px;">이번 주 판매 기록이 없습니다.</div>';
 
- // 2. 학생별 누적 구매 금액 Top 10
  const studentCumulative = {};
  data.ledger.filter(l => l.type === '판매').forEach(l => {
    const sId = l.studentId || l.student;
@@ -330,7 +327,6 @@ function renderAdmin(){
    </div>
  `).join('') : '<div class="empty">구매 기록이 없습니다.</div>';
 
- // 충전 승인 대기 건수 및 품절 상품 개수 계산 및 뱃지 업데이트
  const pendingCount = data.requests.filter(r => r.status === '승인 대기').length;
  const soldOutCount = data.products.filter(p => p.active && Number(p.stock) < 1).length;
 
