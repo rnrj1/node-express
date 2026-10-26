@@ -94,7 +94,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
     <div id="adminSettings" class="adminSub hidden"><div class="card stack"><h3>학교 기금 설정</h3><div class="field"><label>모금 목표 (포인트)</label><input id="goalInput" type="number" min="1"></div><div class="field"><label>현재 기금 (포인트)</label><input id="fundInput" type="number" min="0"></div><button id="saveFund">기금 설정 저장</button><div class="muted small">실제 현금과 기금 잔액은 담당자가 별도로 대조해야 합니다.</div></div></div>
   </div>
 </section>
-</main><footer>학교 매점 키오스크 · 온라인 DB 연결 중</footer>
+</main><footer>@빛의자녀학교 중고등 학생회</footer>
 <script>
 let data = {students:[], products:[], requests:[], ledger:[], goal:100000, fund:0};
 let currentStudent='';
@@ -188,7 +188,7 @@ function render(){
       lastGradeGroup=group;
     }
     const isVip = (lastWeekTop1Id === s.id || lastWeekTop1Id === s.name);
-    const displayName = isVip ? `⭐ [VIP] ${s.name}` : s.name;
+    const displayName = isVip ? `${s.name} 👑[VIP]` : s.name;
     studentOptions+=`<option value="${s.id}">${esc(displayName)}</option>`;
   });
   if(lastGradeGroup)studentOptions+='</optgroup>';
