@@ -46,6 +46,12 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
   <div class="card stack" style="padding:26px;margin-bottom:16px"><div class="muted">전체 모금 진행도</div><h2 style="font-size:28px;margin:0">학교 물품 기금</h2><div class="muted">학생 매점의 수익을 학교에 필요한 물품 마련에 보탭니다.</div><div class="row"><span>현재 모금액</span><b id="fundCurrentText" style="font-size:24px">0P</b></div><div class="row"><span>전체 모금 목표</span><b id="fundGoalText">100,000P</b></div><div style="height:18px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div id="fundBar" style="height:100%;width:0;background:#20a464;transition:width .25s"></div></div><div id="fundPercent" class="muted small">0% 달성</div><div id="fundMessage" class="success">한 걸음씩 함께 모아 봐요!</div></div><h2 style="margin:0 0 12px">학군별 모금 현황</h2><div id="fundGroups" class="grid"></div>
 </section>
 <section id="vipPage" class="hidden">
+  <!-- 현재 VIP 타이틀 홀더 카드 -->
+  <div id="currentVipHolderCard" class="card stack" style="margin-bottom:16px; background:linear-gradient(135deg, #fffbeb, #fef3c7); border:1px solid #fcd34d;">
+    <div class="row"><h3 style="margin:0; color:#b45309;">👑 이번 주 [VIP] 타이틀 홀더</h3><span class="pill" style="background:#fef08a; color:#854d0e;">차주 월요일까지 유지</span></div>
+    <div id="vipHolderContent" style="font-size:16px; font-weight:700; color:#78350f;">집계 중...</div>
+  </div>
+
   <div class="card stack" style="margin-bottom:16px">
     <h2 style="margin:0">🌟 이번 주 실시간 VIP 랭킹 (Top 5)</h2>
     <div class="muted small">이번 주 월요일부터 일요일까지의 구매 실적을 실시간으로 집계합니다. 이번 주 1위에게는 다음 주 월요일부터 <b>[VIP]</b> 타이틀이 부여됩니다!</div>
@@ -216,26 +222,39 @@ function render(){
   data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});
   $('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
   
-  // 2. [이번 주 실시간 VIP 랭킹 탭 (Top 5)] - 이번 주 월요일부터 현재까지의 실시간 집계
-  const currentWeekSalesByStudent = {};
-  data.ledger.filter(l => l.type === '판매' && l.timestamp >= ranges.startOfWeek).forEach(l => {
-    const sId = l.studentId || l.student;
-    if(!sId) return;
-    if(!currentWeekSalesByStudent[sId]) {
-      const studentObj = data.students.find(s => s.id === sId || s.name === l.student);
-      currentWeekSalesByStudent[sId] = { name: studentObj?.name || l.student || '알 수 없는 학생', grade: studentObj?.grade || l.grade || '-', amount: 0 };
-    }
-    currentWeekSalesByStudent[sId].amount += Number(l.amount || 0);
-  });
-  const sortedCurrentVipList = Object.values(currentWeekSalesByStudent).sort((a,b) => b.amount - a.amount).slice(0, 5);
-  $('vipRankingList').innerHTML = sortedCurrentVipList.length ? sortedCurrentVipList.map((v, i) => `
-    <div class="listitem">
-      <div class="row">
-        <div><b>${i+1}위.</b> ${esc(v.name)} <span class="pill">${v.grade !== '-' ? v.grade + '학년' : ''}</span> ${i === 0 ? '<span class="pill ok">👑 현재 1위 (차주 VIP 후보)</span>' : ''}</div>
-        <div class="price" style="font-size:18px;">${money(v.amount)}</div>
-      </div>
+  // 2. [VIP 탭 렌더링] - 지난주 1위 홀더 카드 및 이번 주 실시간 랭킹 Top 5
+const lastWeekVipObj = lastWeekTop1Id ? data.students.find(s => s.id === lastWeekTop1Id || s.name === lastWeekTop1Id) : null;
+const lastWeekVipName = lastWeekVipObj ? lastWeekVipObj.name : (lastWeekTop1Id || null);
+const lastWeekVipGrade = lastWeekVipObj?.grade ? `${lastWeekVipObj.grade}학년` : '';
+
+if (lastWeekVipName) {
+  // 지난주 1위의 지난주 총 구매액 계산
+  const lastWeekVipAmount = lastWeekTotals[lastWeekTop1Id] || Object.values(lastWeekTotals)[0] || 0;
+  $('vipHolderContent').innerHTML = `⭐ <b>[VIP] ${esc(lastWeekVipName)}</b> ${lastWeekVipGrade ? `(${lastWeekVipGrade})` : ''} — 지난주 총 ${money(lastWeekVipAmount)} 이용으로 당당히 타이틀을 거머쥐었습니다!`;
+  $('currentVipHolderCard').style.display = 'block';
+} else {
+  $('vipHolderContent').innerHTML = `아직 지난주 기록을 가진 VIP 홀더가 없습니다. 이번 주의 주인공이 되어보세요!`;
+}
+
+const currentWeekSalesByStudent = {};
+data.ledger.filter(l => l.type === '판매' && l.timestamp >= ranges.startOfWeek).forEach(l => {
+  const sId = l.studentId || l.student;
+  if(!sId) return;
+  if(!currentWeekSalesByStudent[sId]) {
+    const studentObj = data.students.find(s => s.id === sId || s.name === l.student);
+    currentWeekSalesByStudent[sId] = { name: studentObj?.name || l.student || '알 수 없는 학생', grade: studentObj?.grade || l.grade || '-', amount: 0 };
+  }
+  currentWeekSalesByStudent[sId].amount += Number(l.amount || 0);
+});
+const sortedCurrentVipList = Object.values(currentWeekSalesByStudent).sort((a,b) => b.amount - a.amount).slice(0, 5);
+$('vipRankingList').innerHTML = sortedCurrentVipList.length ? sortedCurrentVipList.map((v, i) => `
+  <div class="listitem">
+    <div class="row">
+      <div><b>${i+1}위.</b> ${esc(v.name)} <span class="pill">${v.grade !== '-' ? v.grade + '학년' : ''}</span> ${i === 0 ? '<span class="pill ok">👑 현재 1위 (차주 VIP 후보)</span>' : ''}</div>
+      <div class="price" style="font-size:18px;">${money(v.amount)}</div>
     </div>
-  `).join('') : '<div class="empty">이번 주 실시간 구매 기록이 없습니다. 첫 번째 주인공이 되어보세요!</div>';
+  </div>
+`).join('') : '<div class="empty">이번 주 실시간 구매 기록이 없습니다. 첫 번째 주인공이 되어보세요!</div>';
 
   if (admin) {
     $('adminLogin').classList.add('hidden');
