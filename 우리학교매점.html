@@ -188,7 +188,7 @@ function render(){
       lastGradeGroup=group;
     }
     const isVip = (lastWeekTop1Id === s.id || lastWeekTop1Id === s.name);
-    const displayName = isVip ? `${s.name} 👑[VIP]` : s.name;
+    const displayName = isVip ? `⭐ [VIP] ${s.name} ` : s.name;
     studentOptions+=`<option value="${s.id}">${esc(displayName)}</option>`;
   });
   if(lastGradeGroup)studentOptions+='</optgroup>';
