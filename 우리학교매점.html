@@ -17,7 +17,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
 </style>
 </head>
 <body>
-<header><div class="top"><div class="brand"><span class="logo">🛍️</span> 우리 학교 매점</div><button class="secondary" id="adminToggle">관리자</button></div></header>
+<header><div class="top"><div class="brand"><span class="logo">🛍️</span> SHINE STORE</div><button class="secondary" id="adminToggle">관리자</button></div></header>
 <main>
 <section class="hero"><h1>학교 매점에 오신 걸 환영해요!</h1><div class="muted">이름을 선택하고 포인트로 상품을 구매해 보세요.</div></section>
 <div class="tabs">
@@ -30,7 +30,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
   <div class="card stack" style="margin-bottom:16px">
     <div class="field"><label for="studentSelect">학생 이름 선택</label><select id="studentSelect"></select></div>
     <div id="studentSummary" class="success hidden"></div>
-    <div class="notice">구매한 상품을 식사 시간 전에 먹어서 <b>급식을 먹지 못하는</b> 일이 발생하지 않도록 주의해주세요.<br>무조건 <b>담임선생님의 지도</b>하에 이용해주세요.</div>
+    <div class="notice">구매한 상품을 식사 시간 전에 먹어서 <b>급식을 먹지 못하는</b> 일이 발생하지 않도록 주의해주세요.<br>무조건 <b>담임선생님의 지도</b>하에 이용해주세요.<br><b>쓰레기 처리</b> 깨끗하게 부탁드립니다.</div>
   </div>
   <div class="row" style="margin:18px 0 12px"><h2 style="margin:0">상품 목록</h2><span class="muted small">재고가 있는 상품만 구매 가능</span></div>
   <div class="sortbar"><div class="field"><label for="productCategoryFilter">카테고리</label><select id="productCategoryFilter"><option value="all">전체 카테고리</option><option>과자</option><option>음료</option><option>젤리&초콜릿</option><option>면류</option><option>기타</option></select></div><div class="field"><label for="productSort">정렬 방식</label><select id="productSort"><option value="category-desc">카테고리별 · 가격 높은 순</option><option value="category-asc">카테고리별 · 가격 낮은 순</option><option value="price-desc">가격 높은 순 · 카테고리 묶기</option><option value="price-asc">가격 낮은 순 · 카테고리 묶기</option></select></div></div><div id="products" class="grid"></div>
@@ -43,7 +43,7 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
   </div>
 </section>
 <section id="fundPage" class="hidden">
-  <div class="card stack" style="padding:26px;margin-bottom:16px"><div class="muted">전체 모금 진행도</div><h2 style="font-size:28px;margin:0">학교 물품 기금</h2><div class="muted">학생 매점의 수익을 학교에 필요한 물품 마련에 보탭니다.</div><div class="row"><span>현재 모금액</span><b id="fundCurrentText" style="font-size:24px">0P</b></div><div class="row"><span>전체 모금 목표</span><b id="fundGoalText">100,000P</b></div><div style="height:18px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div id="fundBar" style="height:100%;width:0;background:#20a464;transition:width .25s"></div></div><div id="fundPercent" class="muted small">0% 달성</div><div id="fundMessage" class="success">한 걸음씩 함께 모아 봐요!</div></div><h2 style="margin:0 0 12px">학군별 모금 현황</h2><div id="fundGroups" class="grid"></div>
+  <div class="card stack" style="padding:26px;margin-bottom:16px"><div class="muted">전체 모금 진행도</div><h2 style="font-size:28px;margin:0">학교 물품 기금</h2><div class="muted">학생 매점의 수익을 학교에 필요한 물품 마련에 보탭니다.</div><div class="row"><span>현재 모금액</span><b id="fundCurrentText" style="font-size:24px">0P</b></div><div class="row"><span>전체 모금 목표</span><b id="fundGoalText">100,000P</b></div><div style="height:18px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div id="fundBar" style="height:100%;width:0;background:#20a464;transition:width .25s"></div></div><div id="fundPercent" class="muted small">0% 달성</div><div id="fundMessage" class="success">한 걸음씩 함께 모아 봐요!</div></div><h2 style="margin:0 0 12px">과정별 모금 현황</h2><div id="fundGroups" class="grid"></div>
 </section>
 <section id="vipPage" class="hidden">
   <!-- 현재 VIP 타이틀 홀더 카드 -->
@@ -147,7 +147,14 @@ async function save() {
   }
 }
 
-function schoolBand(grade){grade=Number(grade);if(grade>=1&&grade<=5)return '초등';if(grade>=6&&grade<=8)return '중';if(grade>=9&&grade<=12)return '고등';return '미설정'}
+function schoolBand(grade, studentObj) {
+  if (studentObj && studentObj.isTeacher) return '선생님';
+  const g = Number(grade);
+  if (g >= 1 && g <= 5) return '초등';
+  if (g >= 6 && g <= 8) return '중';
+  if (g >= 9 && g <= 12) return '고등';
+  return '선생님'; // 학년이 12 초과이거나 미설정인 경우 선생님 그룹으로 처리
+}
 function sortedStudents(list){return [...list].sort((a,b)=>{const ga=Number(a.grade)||99,gb=Number(b.grade)||99;return ga-gb||a.name.localeCompare(b.name,'ko')})}
 function addLedger(type,detail,amount,student='',studentId=''){const matched=data.students.find(s=>s.id===studentId)||data.students.find(s=>s.name===student);data.ledger.unshift({id:'l'+Date.now()+Math.random(),type,detail,amount,student,studentId:matched?.id||'',grade:matched?.grade||null,time:new Date().toLocaleString('ko-KR'),timestamp:Date.now()})}
 
@@ -218,9 +225,25 @@ function render(){
   $('fundBar').style.width=overallPct+'%';$('fundPercent').textContent=overallPct.toFixed(1)+'% 달성';
   $('fundMessage').textContent=data.fund>=data.goal?'🎉 기금 목표를 달성했어요! 함께해 줘서 고마워요!':'한 걸음씩 함께 모아 봐요!';
   
-  const groupTotals={'초등':0,'중':0,'고등':0};
-  data.ledger.filter(l=>l.type==='판매').forEach(l=>{let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);const band=schoolBand(l.grade||student?.grade);if(groupTotals[band]!==undefined)groupTotals[band]+=Number(l.amount||0)});
-  $('fundGroups').innerHTML=['초등','중','고등'].map((band,i)=>{const amount=groupTotals[band],pct=data.goal?Math.min(100,amount/data.goal*100):0,range=['1~5학년','6~8학년','9~12학년'][i];return `<div class="card stack"><div class="row"><h3 style="margin:0">${band}학교</h3><span class="pill">${range}</span></div><div class="price">${money(amount)}</div><div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div><div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${['#4778f5','#20a464','#a36be0'][i]}"></div></div></div>`}).join('');
+  const groupTotals={'초등':0,'중':0,'고등':0,'선생님':0};
+data.ledger.filter(l=>l.type==='판매').forEach(l=>{
+  let student=l.studentId?data.students.find(s=>s.id===l.studentId):data.students.find(s=>s.name==l.student);
+  const band=schoolBand(l.grade||student?.grade, student);
+  if(groupTotals[band]!==undefined) groupTotals[band]+=Number(l.amount||0);
+});
+$('fundGroups').innerHTML=['초등','중','고등','선생님'].map((band,i)=>{
+  const amount=groupTotals[band], pct=data.goal?Math.min(100,amount/data.goal*100):0;
+  const ranges = ['1~5학년', '6~8학년', '9~12학년', '교직원 및 선생님'];
+  const colors = ['#4778f5', '#20a464', '#a36be0', '#f59e0b'];
+  return `<div class="card stack">
+    <div class="row"><h3 style="margin:0">${band}</h3><span class="pill">${ranges[i]}</span></div>
+    <div class="price">${money(amount)}</div>
+    <div class="muted small">전체 목표의 ${pct.toFixed(1)}%</div>
+    <div style="height:10px;background:#e5e7eb;border-radius:99px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${colors[i]}"></div>
+    </div>
+  </div>`;
+}).join('');
   
   // 2. [VIP 탭 렌더링] - 지난주 1위 홀더 카드 및 이번 주 실시간 랭킹 Top 5
 const lastWeekVipObj = lastWeekTop1Id ? data.students.find(s => s.id === lastWeekTop1Id || s.name === lastWeekTop1Id) : null;
