@@ -144,7 +144,6 @@ const ledgerPerPage = 20;
 const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// 날짜 문자열을 정확하게 타임스탬프로 변환하는 공통 함수 (년/월/일/시/분/초 완벽 반영)
 function parseDateTime(item) {
   if (item.timestamp && typeof item.timestamp === 'number') {
     return item.timestamp;
@@ -152,16 +151,11 @@ function parseDateTime(item) {
   if (!item.time) return 0;
   
   try {
-    // "2026. 10. 29. 오후 3:45:12" 형태의 한국어 날짜 문자열을 표준 Date로 파싱 가능하게 변환
     let s = item.time.trim();
-    // 예: "2026. 10. 29. 오후 3:45:12" -> "2026-10-29 오후 3:45:12"
     s = s.replace(/\.\s*/g, '-').replace(/-$/, '');
     
     if (s.includes('오후') || s.includes('오전')) {
       const parts = s.split(' ');
-      // parts[0] = YYYY-MM-DD
-      // parts[1] = 오후/오전
-      // parts[2] = HH:MM:SS
       if (parts.length >= 3) {
         let datePart = parts[0];
         let ampm = parts[1];
@@ -178,7 +172,6 @@ function parseDateTime(item) {
       }
     }
     
-    // 기본 파싱 시도
     const d = new Date(item.time);
     if (!isNaN(d.getTime())) return d.getTime();
   } catch (e) {
@@ -429,7 +422,6 @@ function renderAdmin(){
    return `<div class="listitem" style="${isSoldOut ? 'background:#fff5f5; border-left:4px solid var(--red); padding-left:10px; border-radius:8px;' : ''}"><div class="row mobile-col"><div class="product-info">${p.image?`<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}<div><b>${esc(p.name)}</b> <span class="pill">${esc(p.category)}</span>${isSoldOut ? '<span class="pill no" style="margin-left:6px;">! 품절</span>' : ''}<div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active?'판매 중':'판매 중단'}</div></div></div><div class="row"><button class="secondary" onclick="editProduct('${p.id}')">수정</button><button class="secondary" onclick="restock('${p.id}')">재고 추가</button><button class="ghost" onclick="toggleProduct('${p.id}')">${p.active?'판매 중단':'판매 재개'}</button><button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button></div></div></div>`;
  }).join('')||'<div class="empty">상품이 없습니다.</div>';
  
- // 1. 충전 승인 기록 강력한 내림차순 정렬 (연, 월, 일, 시, 분, 초 모두 고려)
  const topupQuery = ($('topupSearch')?.value || '').trim().toLowerCase();
  const filteredRequests = data.requests.filter(r => {
    if (!topupQuery) return true;
@@ -525,7 +517,6 @@ function renderAdmin(){
  $('ledgerDailyIncome').textContent = '오늘 ' + money(dailyIncomeTotal);
  $('ledgerCount').textContent = data.ledger.length + '건';
 
- // 2. 장부 기록 검색 및 페이지네이션
  const ledgerQuery = ($('ledgerSearch')?.value || '').trim().toLowerCase();
  const filteredLedger = data.ledger.filter(l => {
    if (!ledgerQuery) return true;
@@ -675,7 +666,7 @@ function editProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;c
 function restock(id){const p=data.products.find(x=>x.id===id),n=Number(prompt('추가할 재고 수량','10'));if(!Number.isInteger(n)||n<=0){alert('1개 이상의 정수를 입력해 주세요.');return}p.stock+=n;addLedger('입고',p.name+' 재고 '+n+'개 추가',0);save()}
 function toggleProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;p.active=!p.active;save()}
 function deleteProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;if(!confirm(`상품 ‘${p.name}’을 목록에서 완전히 삭제할까요?\n과거 장부 기록은 보존됩니다.`))return;data.products=data.products.filter(x=>x.id!==id);save()}
-function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(id));if(!entry)return;if(!confirm(`장부 기록 ‘{entry.type} · {entry.detail}’을 삭제할까요?\n학생 포인트, 재고, 기금은 변경되지 않습니다.`))return;data.ledger=data.ledger.filter(l=>String(l.id)!==String(id));save()}
+function deleteLedger(id){const entry=data.ledger.find(l=>String(l.id)===String(id));if(!entry)return;if(!confirm(`장부 기록 ‘${entry.type} · ${entry.detail}’을 삭제할까요?\n학생 포인트, 재고, 기금은 변경되지 않습니다.`))return;data.ledger=data.ledger.filter(l=>String(l.id)!==String(id));save()}
 
 document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>showPage(b.dataset.page)));
 function showPage(page){
