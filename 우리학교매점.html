@@ -13,11 +13,12 @@ header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0
 button,input,select,textarea{font:inherit}button{border:0;border-radius:10px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:700;cursor:pointer}button.secondary{background:#eef2ff;color:#2746b8}button.ghost{background:#f3f4f6;color:#374151}button.danger{background:#fff0ef;color:var(--red)}button:disabled{opacity:.45;cursor:not-allowed}
 main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;border-radius:20px;background:linear-gradient(120deg,#eaf0ff,#e9fbf2);margin-bottom:22px}.hero h1{margin:0 0 8px;font-size:clamp(25px,4vw,36px)}.muted{color:var(--muted)}.small{font-size:13px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.tabs button{background:#e9edf5;color:#374151}.tabs button.active{background:var(--blue);color:white}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 2px 10px #1f293708}.card h3{margin:0 0 8px}.row{display:flex;justify-content:space-between;align-items:center;gap:12px}.stack{display:grid;gap:12px}.field{display:grid;gap:6px}.field label{font-weight:700;font-size:14px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;background:white;color:var(--ink)}.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.price{font-size:24px;font-weight:800}.pill{display:inline-block;border-radius:99px;background:#eef2ff;color:#344db8;padding:4px 9px;font-size:12px;font-weight:700}.pill.wait{background:#fff4d8;color:#8a5a00}.pill.ok{background:#e5f8ed;color:#117344}.pill.no{background:#ffedeb;color:#a72c21}.listitem{padding:13px 0;border-bottom:1px solid var(--line)}.listitem:last-child{border:0}.notice{background:#fff8e8;border:1px solid #f2dfac;border-radius:12px;padding:12px;color:#795b16;font-size:13px}.success{background:#e8f8ef;color:#126c40;padding:12px;border-radius:10px}.empty{padding:25px;text-align:center;color:var(--muted)}.product-thumb{width:58px;height:58px;object-fit:cover;border-radius:12px;background:#f3f4f6;border:1px solid var(--line);flex-shrink:0}.product-image-large{width:100%;height:150px;object-fit:cover;border-radius:12px;background:#f3f4f6}.product-info{display:flex;align-items:center;gap:12px}.daily-income{font-size:13px;color:var(--green);font-weight:700;margin-top:4px}.sortbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}.hidden{display:none!important}footer{text-align:center;padding:24px;color:var(--muted);font-size:12px}
+.pagination{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:16px}.pagination button{padding:6px 12px;font-size:13px}
 @media(max-width:600px){.top{padding:12px 14px}.top .brand{font-size:17px}main{padding:0 14px 35px;margin-top:18px}.hero{padding:20px}.row.mobile-col{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
-<header><div class="top"><div class="brand"><span class="logo">🛍️</span>SHINE STORE</div><button class="secondary" id="adminToggle">관리자</button></div></header>
+<header><div class="top"><div class="brand"><span class="logo">🛍️</span> SHINE STORE</div><button class="secondary" id="adminToggle">관리자</button></div></header>
 <main>
 <section class="hero"><h1>학교 매점에 오신 걸 환영해요!</h1><div class="muted">이름을 선택하고 포인트로 상품을 구매해 보세요.</div></section>
 <div class="tabs">
@@ -75,7 +76,16 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
     <div id="adminInventory" class="adminSub hidden">
       <div class="card stack" style="margin-bottom:14px"><h3>새 상품 등록</h3><div class="formgrid"><div class="field"><label>상품 이름</label><input id="newProductName" placeholder="예: 초코 과자"></div><div class="field"><label>분류</label><select id="newProductCategory"><option>과자</option><option>음료</option><option>젤리&초콜릿</option><option>면류</option><option>기타</option></select></div><div class="field"><label>가격 (포인트)</label><input id="newProductPrice" type="number" min="0" value="1000"></div><div class="field"><label>초기 재고</label><input id="newProductStock" type="number" min="0" value="10"></div><div class="field"><label>상품 사진 (선택)</label><input id="newProductImage" type="file" accept="image/*"><span class="muted small">사진은 자동으로 줄여 저장합니다.</span></div></div><button id="addProduct">상품 등록</button></div><div class="card"><h3>상품 및 재고 목록</h3><div id="inventoryList"></div></div>
     </div>
-    <div id="adminTopups" class="adminSub hidden"><div class="card"><h3>충전 승인 대기 및 기록</h3><div id="topupAdminList"></div></div></div>
+    <div id="adminTopups" class="adminSub hidden">
+      <div class="card stack">
+        <div class="row">
+          <h3>충전 승인 대기 및 기록</h3>
+          <button class="danger" id="deleteCurrentTopupPage" style="font-size:12px; padding:6px 10px;">현재 페이지 기록 전체 삭제</button>
+        </div>
+        <div id="topupAdminList"></div>
+        <div id="topupPagination" class="pagination"></div>
+      </div>
+    </div>
     <div id="adminRanking" class="adminSub hidden">
       <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
         <div class="card stack">
@@ -95,7 +105,21 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
         </div>
       </div>
     </div>
-    <div id="adminLedger" class="adminSub hidden"><div class="card stack"><h3>거래 장부</h3><div class="grid"><div class="card"><div class="muted small">판매로 얻은 금액 합계</div><div class="price" id="ledgerIncomeTotal">0P</div><div id="ledgerDailyIncome" class="daily-income">오늘 0P</div></div><div class="card"><div class="muted small">장부 기록 수</div><div class="price" id="ledgerCount">0건</div></div></div><div class="notice">각 기록의 삭제 버튼으로 필요한 내역만 지울 수 있어요. 삭제는 장부 기록에만 적용되며, 학생 포인트·재고·기금 금액은 자동으로 되돌리지 않습니다.</div><div id="ledgerList"></div></div></div>
+    <div id="adminLedger" class="adminSub hidden">
+      <div class="card stack">
+        <h3>거래 장부</h3>
+        <div class="grid">
+          <div class="card"><div class="muted small">판매로 얻은 금액 합계</div><div class="price" id="ledgerIncomeTotal">0P</div><div id="ledgerDailyIncome" class="daily-income">오늘 0P</div></div>
+          <div class="card"><div class="muted small">장부 기록 수</div><div class="price" id="ledgerCount">0건</div></div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div class="notice" style="flex:1;">각 기록의 삭제 버튼으로 필요한 내역만 지울 수 있어요. 삭제는 장부 기록에만 적용됩니다.</div>
+          <button class="danger" id="deleteCurrentLedgerPage" style="font-size:12px; padding:8px 12px; white-space:nowrap;">현재 페이지 기록 전체 삭제</button>
+        </div>
+        <div id="ledgerList"></div>
+        <div id="ledgerPagination" class="pagination"></div>
+      </div>
+    </div>
     <div id="adminSettings" class="adminSub hidden"><div class="card stack"><h3>학교 기금 설정</h3><div class="field"><label>모금 목표 (포인트)</label><input id="goalInput" type="number" min="1"></div><div class="field"><label>현재 기금 (포인트)</label><input id="fundInput" type="number" min="0"></div><button id="saveFund">기금 설정 저장</button><div class="muted small">실제 현금과 기금 잔액은 담당자가 별도로 대조해야 합니다.</div></div></div>
   </div>
 </section>
@@ -104,6 +128,13 @@ main{max-width:1100px;margin:28px auto;padding:0 20px 50px}.hero{padding:26px;bo
 let data = {students:[], products:[], requests:[], ledger:[], goal:100000, fund:0};
 let currentStudent='';
 let admin = sessionStorage.getItem('school_admin_auth') === 'true';
+
+// 페이지네이션 상태 관리 변수
+let currentTopupPage = 1;
+const topupPerPage = 10;
+
+let currentLedgerPage = 1;
+const ledgerPerPage = 20;
 
 const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -330,7 +361,8 @@ function requestTopup(){
     student_name: st.name,
     amount,
     status:'승인 대기',
-    time: new Date().toLocaleString('ko-KR')
+    time: new Date().toLocaleString('ko-KR'),
+    timestamp: Date.now()
   });
   
   $('topupFeedback').innerHTML='<div class="success">신청이 등록됐어요. 관리자 확인 후 포인트가 지급됩니다.</div>';
@@ -349,10 +381,27 @@ function renderAdmin(){
    return `<div class="listitem" style="${isSoldOut ? 'background:#fff5f5; border-left:4px solid var(--red); padding-left:10px; border-radius:8px;' : ''}"><div class="row mobile-col"><div class="product-info">${p.image?`<img class="product-thumb" src="${p.image}" alt="${esc(p.name)}">`:'<div class="product-thumb" style="display:grid;place-items:center;font-size:24px">🛍️</div>'}<div><b>${esc(p.name)}</b> <span class="pill">${esc(p.category)}</span>${isSoldOut ? '<span class="pill no" style="margin-left:6px;">! 품절</span>' : ''}<div class="muted small">${money(p.price)} · 재고 ${p.stock}개 · ${p.active?'판매 중':'판매 중단'}</div></div></div><div class="row"><button class="secondary" onclick="editProduct('${p.id}')">수정</button><button class="secondary" onclick="restock('${p.id}')">재고 추가</button><button class="ghost" onclick="toggleProduct('${p.id}')">${p.active?'판매 중단':'판매 재개'}</button><button class="danger" onclick="deleteProduct('${p.id}')">상품 삭제</button></div></div></div>`;
  }).join('')||'<div class="empty">상품이 없습니다.</div>';
  
- $('topupAdminList').innerHTML=data.requests.map(r=>{
+ // 1. 충전 승인 기록 정렬 및 페이지네이션 (최신 날짜 내림차순 정렬)
+ const sortedRequests = [...data.requests].sort((a, b) => {
+   const timeA = a.timestamp || new Date(a.time).getTime() || 0;
+   const timeB = b.timestamp || new Date(b.time).getTime() || 0;
+   return timeB - timeA;
+ });
+ const totalTopupPages = Math.ceil(sortedRequests.length / topupPerPage) || 1;
+ if(currentTopupPage > totalTopupPages) currentTopupPage = totalTopupPages;
+ const topupSlice = sortedRequests.slice((currentTopupPage - 1) * topupPerPage, currentTopupPage * topupPerPage);
+
+ $('topupAdminList').innerHTML = topupSlice.map(r => {
    const displayName = r.studentName || r.student_name || data.students.find(s => s.id === r.studentId || s.id === r.student_id)?.name || '알 수 없는 사용자';
    return `<div class="listitem"><div class="row mobile-col"><div><b>${esc(displayName)}</b> · ${won(r.amount)}<div class="muted small">${r.time}</div><span class="pill ${r.status==='승인 완료'?'ok':r.status==='거절'?'no':'wait'}">${r.status}</span></div><div class="row">${r.status==='승인 대기'?`<button onclick="approve('${r.id}')">현금 확인 후 승인</button><button class="danger" onclick="reject('${r.id}')">거절</button>`:`<button class="danger" onclick="deleteTopup('${r.id}')">기록 삭제</button>`}</div></div></div>`;
- }).join('')||'<div class="empty">충전 신청이 없습니다.</div>';
+ }).join('') || '<div class="empty">충전 신청이 없습니다.</div>';
+
+ // 충전 페이지네이션 버튼 렌더링
+ $('topupPagination').innerHTML = totalTopupPages > 1 ? `
+   <button class="secondary" ${currentTopupPage === 1 ? 'disabled' : ''} onclick="changeTopupPage(${currentTopupPage - 1})">◀ 이전</button>
+   <span class="muted small" style="font-weight:700;">${currentTopupPage} / ${totalTopupPages} 페이지</span>
+   <button class="secondary" ${currentTopupPage === totalTopupPages ? 'disabled' : ''} onclick="changeTopupPage(${currentTopupPage + 1})">다음 ▶</button>
+ ` : '';
 
  const ranges = getTimeRanges();
  
@@ -414,7 +463,6 @@ function renderAdmin(){
    inventoryBadge.style.display = soldOutCount > 0 ? 'inline-block' : 'none';
  }
 
- // 장부 일일 수익 및 전체 수익 계산 로직 수정 (timestamp 기준 안전 비교)
  const sales = data.ledger.filter(l => l.type === '판매');
  $('ledgerIncomeTotal').textContent = money(sales.reduce((sum, l) => sum + Number(l.amount || 0), 0));
 
@@ -422,17 +470,76 @@ function renderAdmin(){
    if (l.timestamp) {
      return l.timestamp >= ranges.startOfDay;
    }
-   // timestamp가 없는 구버전 기록 대비 안전장치 (오늘 날짜 문자열 포함 여부 비교)
    return String(l.time || '').includes(new Date().toLocaleDateString('ko-KR').slice(0, 10));
  });
  const dailyIncomeTotal = dailySales.reduce((sum, l) => sum + Number(l.amount || 0), 0);
  $('ledgerDailyIncome').textContent = '오늘 ' + money(dailyIncomeTotal);
  $('ledgerCount').textContent = data.ledger.length + '건';
 
- $('ledgerList').innerHTML = data.ledger.map(l => `<div class="listitem"><div class="row mobile-col"><div><b>${esc(l.type)} · ${esc(l.detail)}</b><b>${money(l.amount)}</b><div class="muted small">${esc(l.student||'')} · ${esc(l.time)}</div></div><button class="danger" onclick="deleteLedger('${l.id}')">이 기록 삭제</button></div></div>`).join('') || '<div class="empty">기록이 없습니다.</div>';
+ // 2. 장부 기록 페이지네이션 (20개씩)
+ const totalLedgerPages = Math.ceil(data.ledger.length / ledgerPerPage) || 1;
+ if(currentLedgerPage > totalLedgerPages) currentLedgerPage = totalLedgerPages;
+ const ledgerSlice = data.ledger.slice((currentLedgerPage - 1) * ledgerPerPage, currentLedgerPage * ledgerPerPage);
+
+ $('ledgerList').innerHTML = ledgerSlice.map(l => `<div class="listitem"><div class="row mobile-col"><div><b>${esc(l.type)} · ${esc(l.detail)}</b><b>${money(l.amount)}</b><div class="muted small">${esc(l.student||'')} · ${esc(l.time)}</div></div><button class="danger" onclick="deleteLedger('${l.id}')">이 기록 삭제</button></div></div>`).join('') || '<div class="empty">기록이 없습니다.</div>';
+
+ // 장부 페이지네이션 버튼 렌더링
+ $('ledgerPagination').innerHTML = totalLedgerPages > 1 ? `
+   <button class="secondary" ${currentLedgerPage === 1 ? 'disabled' : ''} onclick="changeLedgerPage(${currentLedgerPage - 1})">◀ 이전</button>
+   <span class="muted small" style="font-weight:700;">${currentLedgerPage} / ${totalLedgerPages} 페이지</span>
+   <button class="secondary" ${currentLedgerPage === totalLedgerPages ? 'disabled' : ''} onclick="changeLedgerPage(${currentLedgerPage + 1})">다음 ▶</button>
+ ` : '';
+
  $('goalInput').value = data.goal;
  $('fundInput').value = data.fund;
 }
+
+// 페이지 변경 함수
+window.changeTopupPage = function(page) {
+  currentTopupPage = page;
+  renderAdmin();
+};
+
+window.changeLedgerPage = function(page) {
+  currentLedgerPage = page;
+  renderAdmin();
+};
+
+// 현재 페이지 전체 삭제 버튼 이벤트
+$('deleteCurrentTopupPage').onclick = () => {
+  const sortedRequests = [...data.requests].sort((a, b) => {
+    const timeA = a.timestamp || new Date(a.time).getTime() || 0;
+    const timeB = b.timestamp || new Date(b.time).getTime() || 0;
+    return timeB - timeA;
+  });
+  const topupSlice = sortedRequests.slice((currentTopupPage - 1) * topupPerPage, currentTopupPage * topupPerPage);
+  
+  if(topupSlice.length === 0) {
+    alert('삭제할 기록이 없습니다.');
+    return;
+  }
+
+  if(!confirm(`현재 페이지(${currentTopupPage}페이지)에 있는 충전 승인 기록 ${topupSlice.length}개를 정말 삭제할까요?`)) return;
+
+  const removeIds = new Set(topupSlice.map(r => r.id));
+  data.requests = data.requests.filter(r => !removeIds.has(r.id));
+  save();
+};
+
+$('deleteCurrentLedgerPage').onclick = () => {
+  const ledgerSlice = data.ledger.slice((currentLedgerPage - 1) * ledgerPerPage, currentLedgerPage * ledgerPerPage);
+  
+  if(ledgerSlice.length === 0) {
+    alert('삭제할 장부 기록이 없습니다.');
+    return;
+  }
+
+  if(!confirm(`현재 페이지(${currentLedgerPage}페이지)에 있는 장부 기록 ${ledgerSlice.length}개를 정말 삭제할까요?\n(학생 포인트, 재고, 기금은 변경되지 않습니다.)`)) return;
+
+  const removeIds = new Set(ledgerSlice.map(l => l.id));
+  data.ledger = data.ledger.filter(l => !removeIds.has(l.id));
+  save();
+};
 
 function approve(id){
   const r = data.requests.find(x => x.id === id);
@@ -451,13 +558,28 @@ function approve(id){
   s.balance += r.amount;
   r.status = '승인 완료';
   r.approvedAt = new Date().toLocaleString('ko-KR');
+  r.timestamp = Date.now(); // 승인 시점 타임스탬프 갱신으로 최신순 상단 정렬 유지
   
   addLedger('충전', `현금 충전 승인`, r.amount, s.name, s.id);
   save();
 }
 
-function reject(id){const r=data.requests.find(x=>x.id===id);if(!r||r.status!=='승인 대기')return;if(confirm('이 충전 신청을 거절할까요?')){r.status='거절';save()}}
-function deleteTopup(id){if(!confirm('이 충전 신청 기록을 삭제할까요?')) return;data.requests = data.requests.filter(r => String(r.id) !== String(id));save();}
+function reject(id){
+  const r=data.requests.find(x=>x.id===id);
+  if(!r||r.status!=='승인 대기')return;
+  if(confirm('이 충전 신청을 거절할까요?')){
+    r.status='거절';
+    r.timestamp = Date.now();
+    save();
+  }
+}
+
+function deleteTopup(id){
+  if(!confirm('이 충전 신청 기록을 삭제할까요?')) return;
+  data.requests = data.requests.filter(r => String(r.id) !== String(id));
+  save();
+}
+
 function editStudent(id){
   const s=data.students.find(x=>x.id===id);if(!s)return;
   const isCurrentlyTeacher = s.isTeacher || Number(s.grade) === 99;
@@ -480,6 +602,7 @@ function editStudent(id){
   data.requests.filter(r=>(r.studentId===id||r.student_id===id)&&r.status==='승인 대기').forEach(r=>{r.studentName=s.name;r.student_name=s.name;});
   save();
 }
+
 function toggleStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;s.active=!s.active;save()}
 function deleteStudent(id){const s=data.students.find(x=>x.id===id);if(!s)return;const pending=data.requests.some(r=>(r.studentId===id||r.student_id===id)&&r.status==='승인 대기');const msg=`${s.name} 프로필을 완전히 삭제할까요?\n잔액 ${money(s.balance)}과 프로필이 삭제됩니다. 과거 장부 기록은 보존됩니다.${pending?'\n대기 중 충전 신청도 함께 삭제됩니다.':''}`;if(!confirm(msg))return;data.students=data.students.filter(x=>x.id!==id);data.requests=data.requests.filter(r=>!((r.studentId===id||r.student_id===id)&&r.status==='승인 대기'));if(currentStudent===id)currentStudent='';save()}
 function editProduct(id){const p=data.products.find(x=>x.id===id);if(!p)return;const name=prompt('상품 이름',p.name);if(name===null)return;const price=prompt('판매 가격 (포인트)',p.price);if(price===null)return;const stock=prompt('상품 재고',p.stock);if(stock===null)return;const n=Number(price);if(!name.trim()||!Number.isInteger(n)||n<0){alert('이름과 가격을 확인해 주세요.');return}const category=prompt('카테고리 입력: 과자 / 음료 / 젤리&초콜릿 / 면류 / 기타',p.category);if(category===null)return;if(!categoryOrder.includes(category.trim())){alert('목록에 있는 카테고리 중 하나를 입력해 주세요.');return}p.name=name.trim();p.price=n;p.category=category.trim();p.stock=stock.trim();save()}
