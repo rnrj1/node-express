@@ -145,33 +145,40 @@ const categoryOrder=['과자','음료','젤리&초콜릿','면류','기타'];
 const $=id=>document.getElementById(id), money=n=>Number(n||0).toLocaleString('ko-KR')+'P', won=n=>Number(n||0).toLocaleString('ko-KR')+'원', esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function parseDateTime(item) {
+  // 1순위: 객체에 저장된 숫자 timestamp가 있으면 즉시 반환
   if (item.timestamp && typeof item.timestamp === 'number') {
     return item.timestamp;
   }
   if (!item.time) return 0;
   
   try {
-    let s = item.time.trim();
-    s = s.replace(/\.\s*/g, '-').replace(/-$/, '');
+    let s = String(item.time).trim();
     
-    if (s.includes('오후') || s.includes('오전')) {
-      const parts = s.split(' ');
-      if (parts.length >= 3) {
-        let datePart = parts[0];
-        let ampm = parts[1];
-        let timeParts = parts[2].split(':');
-        let hour = parseInt(timeParts[0], 10);
-        let min = parseInt(timeParts[1] || 0, 10);
-        let sec = parseInt(timeParts[2] || 0, 10);
+    // "2026. 10. 29. 오후 3:45:00" 형태의 로케일 문자열을 표준 형태로 변환
+    s = s.replace(/\./g, '').replace(/\s+/g, ' ');
+    // 예: "2026 10 29 오후 3 45 00" 또는 콜론 포함 형태 처리
+    
+    let parts = s.split(' ');
+    if (parts.length >= 4) {
+      let year = parseInt(parts[0], 10);
+      let month = parseInt(parts[1], 10) - 1;
+      let day = parseInt(parts[2], 10);
+      let ampm = parts[3];
+      
+      let timeStr = parts[4] || '0:0:0';
+      let timeParts = timeStr.split(':');
+      let hour = parseInt(timeParts[0] || 0, 10);
+      let min = parseInt(timeParts[1] || 0, 10);
+      let sec = parseInt(timeParts[2] || 0, 10);
 
-        if (ampm === '오후' && hour < 12) hour += 12;
-        if (ampm === '오전' && hour === 12) hour = 0;
+      if (ampm === '오후' && hour < 12) hour += 12;
+      if (ampm === '오전' && hour === 12) hour = 0;
 
-        let [year, month, day] = datePart.split('-').map(Number);
-        return new Date(year, month - 1, day, hour, min, sec).getTime();
-      }
+      const dTime = new Date(year, month, day, hour, min, sec).getTime();
+      if (!isNaN(dTime)) return dTime;
     }
     
+    // 일반적인 Date 객체 파싱 시도
     const d = new Date(item.time);
     if (!isNaN(d.getTime())) return d.getTime();
   } catch (e) {
